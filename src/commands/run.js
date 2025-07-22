@@ -7,6 +7,7 @@ const path = require('path');
 const chalk = require('chalk');
 const ora = require('ora');
 const { createOrchestrator } = require('@liftping/repochief-core');
+const CloudProgressReporter = require('../integrations/CloudProgressReporter');
 
 /**
  * Parse task configuration file
@@ -109,6 +110,16 @@ async function runCommand(taskFile, options) {
     await orchestrator.initialize();
     spinner.succeed('Orchestrator initialized');
     
+    // Set up cloud progress reporting
+    const progressReporter = CloudProgressReporter.fromEnvironment();
+    const connectionTest = await progressReporter.testConnection();
+    
+    if (connectionTest.success) {
+      console.log(chalk.green('✅ Cloud Progress API connected'));
+    } else if (progressReporter.enabled) {
+      console.log(chalk.yellow('⚠️  Cloud Progress API unavailable (continuing locally)'));
+    }
+    
     // Create agents based on task requirements
     spinner.start('Creating AI agents...');
     const agentPromises = [];
@@ -158,25 +169,66 @@ async function runCommand(taskFile, options) {
     spinner.succeed(`Queued ${tasks.length} tasks`);
     
     // Set up progress monitoring
+    const swarmId = `swarm-${Date.now()}`;
+    
     if (options.watch) {
       console.log(chalk.blue('\n📊 Real-time Progress:\n'));
-      
-      orchestrator.on('taskAssigned', ({ task, agent }) => {
-        console.log(chalk.gray(`[${new Date().toISOString()}] Task "${task.id}" assigned to ${agent.name}`));
-      });
-      
-      orchestrator.on('taskCompleted', ({ task, result }) => {
-        console.log(chalk.green(`[${new Date().toISOString()}] ✅ Task "${task.id}" completed`));
-      });
-      
-      orchestrator.on('taskFailed', ({ task, error }) => {
-        console.log(chalk.red(`[${new Date().toISOString()}] ❌ Task "${task.id}" failed: ${error.message}`));
-      });
-      
-      orchestrator.on('costUpdate', ({ total, cost }) => {
-        console.log(chalk.yellow(`[${new Date().toISOString()}] 💰 Cost update: $${cost.toFixed(4)} (Total: $${total.toFixed(2)})`));
-      });
     }
+    
+    // Cloud progress reporting
+    orchestrator.on('taskAssigned', ({ task, agent }) => {
+      if (options.watch) {
+        console.log(chalk.gray(`[${new Date().toISOString()}] Task "${task.id}" assigned to ${agent.name}`));
+      }
+      
+      // Report to cloud (async, non-blocking)
+      progressReporter.send({
+        swarmId,
+        taskId: task.id,
+        agentId: agent.name,
+        status: 'in_progress',
+        progress: 0,
+        message: 'Task assigned'
+      }).catch(() => {}); // Silent fail for cloud reporting
+    });
+    
+    orchestrator.on('taskCompleted', ({ task, result }) => {
+      if (options.watch) {
+        console.log(chalk.green(`[${new Date().toISOString()}] ✅ Task "${task.id}" completed`));
+      }
+      
+      // Report to cloud
+      progressReporter.send({
+        swarmId,
+        taskId: task.id,
+        status: 'completed',
+        progress: 1.0,
+        tokensUsed: result.tokensUsed || 0,
+        cost: result.cost || 0,
+        message: 'Task completed successfully'
+      }).catch(() => {});
+    });
+    
+    orchestrator.on('taskFailed', ({ task, error }) => {
+      if (options.watch) {
+        console.log(chalk.red(`[${new Date().toISOString()}] ❌ Task "${task.id}" failed: ${error.message}`));
+      }
+      
+      // Report to cloud
+      progressReporter.send({
+        swarmId,
+        taskId: task.id,
+        status: 'failed',
+        progress: 0,
+        message: `Task failed: ${error.message.substring(0, 100)}`
+      }).catch(() => {});
+    });
+    
+    orchestrator.on('costUpdate', ({ total, cost }) => {
+      if (options.watch) {
+        console.log(chalk.yellow(`[${new Date().toISOString()}] 💰 Cost update: $${cost.toFixed(4)} (Total: $${total.toFixed(2)})`));
+      }
+    });
     
     // Start execution
     console.log(chalk.blue('\n🚀 Starting execution...\n'));
