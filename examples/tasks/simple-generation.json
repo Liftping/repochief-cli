@@ -1,0 +1,14 @@
+[
+  {
+    "id": "generate-utils",
+    "type": "generation",
+    "objective": "Create a JavaScript utility function for formatting dates in multiple formats",
+    "successCriteria": [
+      "Support ISO, US, and EU date formats",
+      "Handle invalid inputs gracefully",
+      "Include unit tests using Jest",
+      "Add JSDoc documentation"
+    ],
+    "maxTokens": 1500
+  }
+]

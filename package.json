@@ -1,0 +1,50 @@
+{
+  "name": "@liftping/repochief-cli",
+  "version": "0.1.0",
+  "description": "CLI for RepoChief - AI Agent Orchestration for Developers",
+  "main": "src/index.js",
+  "bin": {
+    "repochief": "./bin/repochief.js"
+  },
+  "scripts": {
+    "test": "mocha tests/**/*.test.js --timeout 10000 --exit",
+    "test:watch": "mocha tests/**/*.test.js --watch",
+    "lint": "eslint src/ bin/ --ext .js",
+    "dev": "node bin/repochief.js"
+  },
+  "keywords": [
+    "repochief",
+    "ai",
+    "agents",
+    "orchestration",
+    "cli",
+    "development",
+    "automation"
+  ],
+  "author": "Liftping",
+  "license": "MIT",
+  "dependencies": {
+    "@liftping/repochief-core": "file:../repochief-core",
+    "chalk": "^4.1.2",
+    "commander": "^9.5.0",
+    "ora": "^5.4.1",
+    "inquirer": "^8.2.6",
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "chai": "^4.3.10",
+    "eslint": "^8.56.0",
+    "mocha": "^10.2.0",
+    "sinon": "^17.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ]
+}

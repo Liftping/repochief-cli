@@ -1,0 +1,36 @@
+{
+  "name": "Code Review Workflow",
+  "description": "Multi-agent code review with analysis, validation, and improvement",
+  "tasks": [
+    {
+      "id": "analyze-function",
+      "type": "comprehension",
+      "objective": "Analyze this JavaScript function and identify its purpose, potential issues, and improvement opportunities",
+      "context": "function calculateDiscount(price, customerType) {\n  if (customerType == 'premium') {\n    return price * 0.8;\n  } else if (customerType == 'regular') {\n    return price * 0.9;\n  }\n  return price;\n}",
+      "maxTokens": 800
+    },
+    {
+      "id": "security-review",
+      "type": "validation",
+      "objective": "Review this code for security vulnerabilities and potential issues",
+      "context": "function calculateDiscount(price, customerType) {\n  if (customerType == 'premium') {\n    return price * 0.8;\n  } else if (customerType == 'regular') {\n    return price * 0.9;\n  }\n  return price;\n}",
+      "dependencies": ["analyze-function"],
+      "maxTokens": 600
+    },
+    {
+      "id": "generate-improved",
+      "type": "generation",
+      "objective": "Generate an improved version of this function based on the analysis and security review",
+      "context": "function calculateDiscount(price, customerType) {\n  if (customerType == 'premium') {\n    return price * 0.8;\n  } else if (customerType == 'regular') {\n    return price * 0.9;\n  }\n  return price;\n}",
+      "dependencies": ["analyze-function", "security-review"],
+      "successCriteria": [
+        "Use TypeScript with proper type annotations",
+        "Add input validation",
+        "Use constants for discount rates",
+        "Include JSDoc comments",
+        "Handle edge cases"
+      ],
+      "maxTokens": 1200
+    }
+  ]
+}
