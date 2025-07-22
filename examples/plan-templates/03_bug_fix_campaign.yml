@@ -1,0 +1,197 @@
+apiVersion: repochief.io/v1
+kind: BugFixCampaign
+metadata:
+  schemaVersion: "1.0"
+  name: "Critical Bug Fix Sprint"
+  description: "Systematic resolution of high-priority bugs"
+  author: "qa-lead@company.com"
+  created: "2024-01-12T09:00:00Z"
+  tags: ["bugfix", "quality", "critical"]
+  
+spec:
+  settings:
+    executionMode: "sequential"  # Fix bugs one at a time to avoid conflicts
+    defaultAgent: "claude-code"
+    errorHandling: "prompt"      # Get human input on complex fixes
+    codeReview: true
+    testFirst: true              # Write failing test before fixing
+    
+  bugs:
+    - id: "bug-auth-001"
+      severity: "critical"
+      title: "Authentication bypass vulnerability"
+      description: "Users can access protected routes without valid JWT"
+      reproductionSteps: |
+        1. Navigate to /api/admin/users without auth header
+        2. Observe that response returns user data
+        3. Expected: 401 Unauthorized response
+      affectedFiles: ["src/middleware/auth.js", "src/routes/admin.js"]
+      
+    - id: "bug-db-002"
+      severity: "high"
+      title: "Database connection pool exhaustion"
+      description: "Application crashes after ~100 concurrent requests"
+      reproductionSteps: |
+        1. Run load test with 100 concurrent users
+        2. Monitor database connections
+        3. Observe connection pool exhaustion at ~95 connections
+      affectedFiles: ["src/db/connection.js", "src/services/user-service.js"]
+      
+    - id: "bug-ui-003"
+      severity: "medium"
+      title: "Form validation bypassed on mobile"
+      description: "Client-side validation doesn't trigger on mobile Safari"
+      reproductionSteps: |
+        1. Open registration form on iOS Safari
+        2. Submit form with invalid email
+        3. Form submits without validation
+      affectedFiles: ["src/components/RegisterForm.tsx", "src/utils/validation.ts"]
+      
+  workflow:
+    - id: "phase-1-reproduction"
+      name: "Bug Reproduction & Analysis"
+      tasks:
+        - id: "repro-1"
+          type: "analysis"
+          title: "Reproduce and document bug-auth-001"
+          prompt: |
+            Reproduce the authentication bypass bug:
+            - Set up test environment
+            - Follow reproduction steps
+            - Document actual vs expected behavior
+            - Identify root cause in code
+            - Create minimal reproduction test case
+          estimatedHours: 2
+          bugId: "bug-auth-001"
+          
+        - id: "repro-2"
+          type: "analysis"
+          title: "Reproduce and analyze bug-db-002"
+          prompt: |
+            Analyze database connection pool issue:
+            - Create load test to reproduce
+            - Monitor connection metrics
+            - Identify connection leak locations
+            - Document connection lifecycle issues
+          estimatedHours: 3
+          bugId: "bug-db-002"
+          dependencies: ["repro-1"]
+          
+    - id: "phase-2-test-creation"
+      name: "Test-First Development"
+      tasks:
+        - id: "test-1"
+          type: "testing"
+          title: "Write failing test for auth bypass"
+          prompt: |
+            Create comprehensive test for auth middleware:
+            - Test unauthorized access to protected routes
+            - Test various invalid token scenarios
+            - Test token expiration handling
+            - Ensure test fails with current bug
+          estimatedHours: 2
+          bugId: "bug-auth-001"
+          dependencies: ["repro-1"]
+          
+        - id: "test-2"
+          type: "testing"
+          title: "Write connection pool exhaustion test"
+          prompt: |
+            Create load test for connection pooling:
+            - Simulate concurrent database operations
+            - Monitor connection pool metrics
+            - Test connection release mechanisms
+            - Verify pool recovery after exhaustion
+          estimatedHours: 3
+          bugId: "bug-db-002"
+          dependencies: ["repro-2"]
+          
+    - id: "phase-3-implementation"
+      name: "Bug Fixes"
+      tasks:
+        - id: "fix-1"
+          type: "bugfix"
+          title: "Fix authentication bypass vulnerability"
+          prompt: |
+            Implement secure authentication middleware:
+            - Validate JWT tokens properly
+            - Check token expiration
+            - Verify user permissions
+            - Handle edge cases (missing header, malformed token)
+            - Ensure all tests pass
+          estimatedHours: 4
+          bugId: "bug-auth-001"
+          dependencies: ["test-1"]
+          
+        - id: "fix-2"
+          type: "bugfix"
+          title: "Fix database connection pool exhaustion"
+          prompt: |
+            Resolve connection pool issues:
+            - Implement proper connection release
+            - Add connection timeout handling
+            - Configure optimal pool size
+            - Add connection monitoring
+            - Ensure load test passes
+          estimatedHours: 5
+          bugId: "bug-db-002"
+          dependencies: ["test-2"]
+          
+        - id: "fix-3"
+          type: "bugfix"
+          title: "Fix mobile form validation"
+          agent: "cursor"
+          prompt: |
+            Fix validation on mobile browsers:
+            - Debug Safari-specific issues
+            - Implement cross-browser validation
+            - Add touch event handlers
+            - Test on multiple mobile browsers
+            - Ensure consistent UX
+          estimatedHours: 3
+          bugId: "bug-ui-003"
+          dependencies: ["fix-2"]
+          
+    - id: "phase-4-verification"
+      name: "Verification & Documentation"
+      tasks:
+        - id: "verify-1"
+          type: "testing"
+          title: "Run comprehensive regression tests"
+          prompt: |
+            Execute full test suite:
+            - Run all unit tests
+            - Run integration tests
+            - Execute E2E test suite
+            - Verify no new bugs introduced
+            - Generate test coverage report
+          estimatedHours: 2
+          dependencies: ["fix-3"]
+          
+        - id: "doc-1"
+          type: "documentation"
+          title: "Document fixes and lessons learned"
+          prompt: |
+            Create bug fix documentation:
+            - Document root causes
+            - Explain implemented fixes
+            - Add prevention guidelines
+            - Update security best practices
+            - Create knowledge base entries
+          estimatedHours: 2
+          dependencies: ["verify-1"]
+          
+  deliverables:
+    - type: "bug_fixes"
+      description: "Resolved critical and high-priority bugs"
+      
+    - type: "test_suite"
+      path: "tests/bugs/"
+      description: "Regression tests for all fixed bugs"
+      
+    - type: "documentation"
+      path: "docs/bugs/campaign-2024-01.md"
+      description: "Bug fix report and lessons learned"
+      
+    - type: "metrics"
+      description: "Before/after performance and security metrics"

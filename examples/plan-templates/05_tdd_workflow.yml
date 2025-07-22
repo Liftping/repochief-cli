@@ -1,0 +1,317 @@
+apiVersion: repochief.io/v1
+kind: TDDWorkflow
+metadata:
+  schemaVersion: "1.0"
+  name: "Shopping Cart TDD Implementation"
+  description: "Test-driven development of shopping cart feature"
+  author: "senior-dev@company.com"
+  created: "2024-01-05T14:00:00Z"
+  tags: ["tdd", "testing", "feature", "best-practices"]
+  
+spec:
+  settings:
+    executionMode: "sequential"     # TDD requires strict order
+    defaultAgent: "claude-code"
+    errorHandling: "stop"           # Stop if tests fail
+    testFirst: true                 # Enforce red-green-refactor
+    coverageThreshold: 95           # Minimum test coverage
+    
+  tddCycles:
+    - id: "cycle-1-cart-creation"
+      name: "Shopping Cart Creation"
+      redPhase:
+        - id: "red-1"
+          type: "test_creation"
+          title: "Write failing test for cart creation"
+          prompt: |
+            Write test for shopping cart creation:
+            ```javascript
+            describe('ShoppingCart', () => {
+              it('should create an empty cart for a user', () => {
+                // Test that doesn't exist yet:
+                const cart = new ShoppingCart(userId);
+                expect(cart.userId).toBe(userId);
+                expect(cart.items).toEqual([]);
+                expect(cart.total).toBe(0);
+              });
+            });
+            ```
+            Ensure test fails (no implementation exists)
+          estimatedMinutes: 15
+          
+      greenPhase:
+        - id: "green-1"
+          type: "implementation"
+          title: "Implement minimal cart creation"
+          prompt: |
+            Create minimal implementation to pass test:
+            - Create ShoppingCart class
+            - Add constructor with userId
+            - Initialize empty items array
+            - Set total to 0
+            - Make test pass with simplest solution
+          estimatedMinutes: 20
+          dependencies: ["red-1"]
+          
+      refactorPhase:
+        - id: "refactor-1"
+          type: "refactoring"
+          title: "Refactor cart creation if needed"
+          prompt: |
+            Improve code while keeping tests green:
+            - Extract constants if any
+            - Improve naming
+            - Add JSDoc comments
+            - Keep it simple (might not need refactoring yet)
+          estimatedMinutes: 10
+          dependencies: ["green-1"]
+          
+    - id: "cycle-2-add-items"
+      name: "Add Items to Cart"
+      redPhase:
+        - id: "red-2"
+          type: "test_creation"
+          title: "Write failing test for adding items"
+          prompt: |
+            Write test for adding items to cart:
+            ```javascript
+            describe('ShoppingCart', () => {
+              it('should add an item to the cart', () => {
+                const cart = new ShoppingCart(userId);
+                const item = { id: 'prod-1', name: 'Widget', price: 29.99, quantity: 1 };
+                
+                cart.addItem(item);
+                
+                expect(cart.items).toHaveLength(1);
+                expect(cart.items[0]).toEqual(item);
+                expect(cart.total).toBe(29.99);
+              });
+              
+              it('should increase quantity when adding existing item', () => {
+                const cart = new ShoppingCart(userId);
+                const item = { id: 'prod-1', name: 'Widget', price: 29.99, quantity: 1 };
+                
+                cart.addItem(item);
+                cart.addItem(item);
+                
+                expect(cart.items).toHaveLength(1);
+                expect(cart.items[0].quantity).toBe(2);
+                expect(cart.total).toBe(59.98);
+              });
+            });
+            ```
+          estimatedMinutes: 20
+          dependencies: ["refactor-1"]
+          
+      greenPhase:
+        - id: "green-2"
+          type: "implementation"
+          title: "Implement addItem method"
+          prompt: |
+            Implement addItem to pass tests:
+            - Check if item already exists
+            - Update quantity if exists
+            - Add new item if not exists
+            - Update cart total
+            - Handle edge cases
+          estimatedMinutes: 30
+          dependencies: ["red-2"]
+          
+      refactorPhase:
+        - id: "refactor-2"
+          type: "refactoring"
+          title: "Refactor item addition logic"
+          prompt: |
+            Improve addItem implementation:
+            - Extract findItem method
+            - Extract calculateTotal method
+            - Improve variable names
+            - Ensure immutability if needed
+          estimatedMinutes: 20
+          dependencies: ["green-2"]
+          
+    - id: "cycle-3-remove-items"
+      name: "Remove Items from Cart"
+      redPhase:
+        - id: "red-3"
+          type: "test_creation"
+          title: "Write tests for removing items"
+          prompt: |
+            Write comprehensive removal tests:
+            ```javascript
+            it('should remove an item from cart', () => {
+              // Setup cart with items
+              // Test complete removal
+            });
+            
+            it('should decrease quantity when removing', () => {
+              // Test quantity decrease
+            });
+            
+            it('should handle removing non-existent items', () => {
+              // Test error handling
+            });
+            ```
+          estimatedMinutes: 25
+          dependencies: ["refactor-2"]
+          
+      greenPhase:
+        - id: "green-3"
+          type: "implementation"
+          title: "Implement removeItem method"
+          prompt: |
+            Implement item removal:
+            - Find item in cart
+            - Decrease quantity or remove completely
+            - Update total
+            - Handle non-existent items gracefully
+          estimatedMinutes: 30
+          dependencies: ["red-3"]
+          
+      refactorPhase:
+        - id: "refactor-3"
+          type: "refactoring"
+          title: "Extract common patterns"
+          prompt: |
+            Refactor for DRY principle:
+            - Extract item manipulation logic
+            - Create consistent error handling
+            - Improve method signatures
+            - Consider command pattern
+          estimatedMinutes: 25
+          dependencies: ["green-3"]
+          
+    - id: "cycle-4-cart-validation"
+      name: "Cart Validation Rules"
+      redPhase:
+        - id: "red-4"
+          type: "test_creation"
+          title: "Write validation tests"
+          prompt: |
+            Test business rules:
+            - Maximum items per cart (100)
+            - Maximum quantity per item (10)
+            - Minimum order total ($5)
+            - Valid item structure
+          estimatedMinutes: 30
+          dependencies: ["refactor-3"]
+          
+      greenPhase:
+        - id: "green-4"
+          type: "implementation"
+          title: "Implement validation"
+          prompt: |
+            Add validation logic:
+            - Validate on add/remove
+            - Throw meaningful errors
+            - Implement business rules
+            - Keep cart in valid state
+          estimatedMinutes: 35
+          dependencies: ["red-4"]
+          
+      refactorPhase:
+        - id: "refactor-4"
+          type: "refactoring"
+          title: "Create validation service"
+          prompt: |
+            Extract validation:
+            - Create CartValidator class
+            - Define validation rules
+            - Make rules configurable
+            - Improve error messages
+          estimatedMinutes: 30
+          dependencies: ["green-4"]
+          
+    - id: "cycle-5-persistence"
+      name: "Cart Persistence"
+      redPhase:
+        - id: "red-5"
+          type: "test_creation"
+          title: "Write persistence tests"
+          prompt: |
+            Test cart save/load:
+            - Save cart to storage
+            - Load cart from storage
+            - Handle missing carts
+            - Test data integrity
+          estimatedMinutes: 25
+          dependencies: ["refactor-4"]
+          
+      greenPhase:
+        - id: "green-5"
+          type: "implementation"
+          title: "Implement cart persistence"
+          prompt: |
+            Add persistence layer:
+            - Create CartRepository interface
+            - Implement in-memory storage
+            - Add save/load methods
+            - Handle serialization
+          estimatedMinutes: 40
+          dependencies: ["red-5"]
+          
+      refactorPhase:
+        - id: "refactor-5"
+          type: "refactoring"
+          title: "Apply repository pattern"
+          prompt: |
+            Clean architecture:
+            - Separate concerns properly
+            - Make storage pluggable
+            - Add factory pattern
+            - Prepare for real database
+          estimatedMinutes: 35
+          dependencies: ["green-5"]
+          
+    - id: "cycle-6-integration"
+      name: "Integration Testing"
+      tasks:
+        - id: "integration-1"
+          type: "testing"
+          title: "Write integration tests"
+          prompt: |
+            Test complete workflows:
+            - User journey tests
+            - API integration tests
+            - Database integration
+            - Error scenarios
+            - Performance tests
+          estimatedHours: 3
+          dependencies: ["refactor-5"]
+          
+        - id: "integration-2"
+          type: "documentation"
+          title: "Document TDD process"
+          prompt: |
+            Create TDD documentation:
+            - Document test patterns
+            - Show red-green-refactor cycles
+            - Explain design decisions
+            - Create TDD guide for team
+          estimatedHours: 2
+          dependencies: ["integration-1"]
+          
+  principles:
+    - "Always write test first (Red)"
+    - "Write minimal code to pass (Green)"
+    - "Refactor only with passing tests"
+    - "One failing test at a time"
+    - "Keep cycles small (< 30 min)"
+    - "Commit after each cycle"
+    
+  deliverables:
+    - type: "feature_code"
+      path: "src/models/shopping-cart/"
+      description: "TDD-developed shopping cart"
+      
+    - type: "test_suite"
+      path: "tests/models/shopping-cart/"
+      description: "Comprehensive test coverage"
+      
+    - type: "tdd_guide"
+      path: "docs/tdd/shopping-cart-example.md"
+      description: "TDD process documentation"
+      
+    - type: "coverage_report"
+      path: "coverage/shopping-cart/"
+      description: "Test coverage metrics"

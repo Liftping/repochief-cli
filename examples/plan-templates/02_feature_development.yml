@@ -1,0 +1,151 @@
+apiVersion: repochief.io/v1
+kind: FeatureDevelopment
+metadata:
+  schemaVersion: "1.0"
+  name: "User Authentication System"
+  description: "Complete implementation of JWT-based authentication"
+  author: "lead-developer@company.com"
+  created: "2024-01-10T14:30:00Z"
+  tags: ["feature", "authentication", "security"]
+  
+spec:
+  requirements:
+    functional:
+      - "Users can register with email and password"
+      - "Users can login and receive JWT tokens"
+      - "Users can reset forgotten passwords"
+      - "Users can update their profile"
+      - "Support for OAuth providers (Google, GitHub)"
+    nonFunctional:
+      - "Response time < 200ms for auth endpoints"
+      - "OWASP Top 10 compliant"
+      - "Support 10,000 concurrent users"
+      - "99.9% uptime for auth service"
+      
+  settings:
+    executionMode: "sequential"
+    defaultAgent: "claude-code"
+    errorHandling: "prompt"
+    codeReview: true
+    
+  phases:
+    - id: "phase-1-backend"
+      name: "Backend Implementation"
+      tasks:
+        - id: "auth-1"
+          type: "implementation"
+          title: "Create user model and database schema"
+          prompt: |
+            Design and implement user database schema:
+            - User table with proper indexes
+            - Password hashing with bcrypt
+            - Email verification tokens
+            - Password reset tokens
+            - Audit fields (created_at, updated_at)
+          estimatedHours: 3
+          
+        - id: "auth-2"
+          type: "implementation"
+          title: "Implement JWT service"
+          prompt: |
+            Create JWT token management service:
+            - Token generation with proper claims
+            - Token validation and parsing
+            - Refresh token mechanism
+            - Token revocation support
+            - Configurable expiration times
+          estimatedHours: 4
+          dependencies: ["auth-1"]
+          
+        - id: "auth-3"
+          type: "implementation"
+          title: "Create authentication endpoints"
+          prompt: |
+            Implement REST API endpoints:
+            - POST /auth/register
+            - POST /auth/login
+            - POST /auth/logout
+            - POST /auth/refresh
+            - POST /auth/forgot-password
+            - POST /auth/reset-password
+            Include proper validation and error handling
+          estimatedHours: 6
+          dependencies: ["auth-2"]
+          
+    - id: "phase-2-frontend"
+      name: "Frontend Implementation"
+      tasks:
+        - id: "ui-1"
+          type: "ui_implementation"
+          title: "Create authentication forms"
+          agent: "cursor"
+          prompt: |
+            Build React components for authentication:
+            - Login form with validation
+            - Registration form with password strength
+            - Forgot password form
+            - Reset password form
+            - Use shadcn/ui components
+            - Implement client-side validation
+          estimatedHours: 5
+          dependencies: ["auth-3"]
+          
+        - id: "ui-2"
+          type: "implementation"
+          title: "Implement auth state management"
+          prompt: |
+            Create authentication state management:
+            - Auth context provider
+            - useAuth hook
+            - Token storage (secure)
+            - Auto-refresh logic
+            - Protected route component
+          estimatedHours: 4
+          dependencies: ["ui-1"]
+          
+    - id: "phase-3-testing"
+      name: "Testing & Security"
+      tasks:
+        - id: "test-1"
+          type: "testing"
+          title: "Write comprehensive tests"
+          prompt: |
+            Create test suite for authentication:
+            - Unit tests for JWT service
+            - Integration tests for API endpoints
+            - E2E tests for auth flows
+            - Security tests (SQL injection, XSS)
+            - Load tests for performance
+          estimatedHours: 6
+          dependencies: ["ui-2"]
+          
+        - id: "sec-1"
+          type: "security_review"
+          title: "Security audit and hardening"
+          agent: "claude-code"
+          prompt: |
+            Perform security audit:
+            - Review OWASP compliance
+            - Check for timing attacks
+            - Validate rate limiting
+            - Review token security
+            - Document security measures
+          estimatedHours: 3
+          dependencies: ["test-1"]
+          
+  deliverables:
+    - type: "code"
+      path: "src/services/auth/"
+      description: "Authentication service implementation"
+      
+    - type: "api_docs"
+      path: "docs/api/authentication.md"
+      description: "API documentation for auth endpoints"
+      
+    - type: "tests"
+      path: "tests/auth/"
+      description: "Complete test suite"
+      
+    - type: "security_report"
+      path: "docs/security/auth-audit.md"
+      description: "Security audit findings and measures"

@@ -1,0 +1,255 @@
+apiVersion: repochief.io/v1
+kind: RefactoringProject
+metadata:
+  schemaVersion: "1.0"
+  name: "Legacy Code Modernization"
+  description: "Systematic refactoring of legacy payment module"
+  author: "tech-lead@company.com"
+  created: "2024-01-08T11:00:00Z"
+  tags: ["refactoring", "technical-debt", "modernization"]
+  
+spec:
+  settings:
+    executionMode: "sequential"
+    defaultAgent: "claude-code"
+    errorHandling: "prompt"
+    preserveBehavior: true       # Ensure no functionality changes
+    incrementalRefactoring: true # Small, safe steps
+    
+  targetMetrics:
+    codeComplexity:
+      current: 85               # Cyclomatic complexity
+      target: 20
+    testCoverage:
+      current: 45               # Percentage
+      target: 90
+    duplicateCode:
+      current: 35               # Percentage
+      target: 5
+    dependencies:
+      current: 12               # External dependencies
+      target: 6
+      
+  codeAnalysis:
+    mainFile: "src/services/payment-processor.js"
+    relatedFiles: 
+      - "src/utils/payment-helpers.js"
+      - "src/models/payment.js"
+      - "src/controllers/payment-controller.js"
+    issues:
+      - "Single 500+ line function handling all payment types"
+      - "Hardcoded configuration values throughout"
+      - "No separation of concerns"
+      - "Tightly coupled to specific payment provider"
+      - "No unit tests, only manual testing"
+      
+  phases:
+    - id: "phase-1-analysis"
+      name: "Code Analysis & Planning"
+      tasks:
+        - id: "analyze-1"
+          type: "analysis"
+          title: "Analyze current code structure"
+          prompt: |
+            Perform deep analysis of payment processor:
+            - Map all code paths and dependencies
+            - Identify code smells and anti-patterns
+            - Document current behavior thoroughly
+            - Create dependency graph
+            - Measure current metrics (complexity, duplication)
+          estimatedHours: 3
+          
+        - id: "plan-1"
+          type: "planning"
+          title: "Create refactoring strategy"
+          prompt: |
+            Design incremental refactoring plan:
+            - Break down into safe, small steps
+            - Identify extraction opportunities
+            - Plan interface boundaries
+            - Design new architecture
+            - Create migration checklist
+          estimatedHours: 2
+          dependencies: ["analyze-1"]
+          
+    - id: "phase-2-test-harness"
+      name: "Build Safety Net"
+      tasks:
+        - id: "test-1"
+          type: "testing"
+          title: "Create characterization tests"
+          prompt: |
+            Build comprehensive test suite for existing behavior:
+            - Test all payment scenarios
+            - Capture current outputs exactly
+            - Include edge cases and errors
+            - Create integration tests
+            - Achieve 80%+ coverage of critical paths
+          estimatedHours: 6
+          dependencies: ["plan-1"]
+          
+        - id: "test-2"
+          type: "testing"
+          title: "Add contract tests"
+          prompt: |
+            Create API contract tests:
+            - Document current API behavior
+            - Test request/response formats
+            - Verify error responses
+            - Test timeout scenarios
+            - Ensure backward compatibility
+          estimatedHours: 3
+          dependencies: ["test-1"]
+          
+    - id: "phase-3-extract"
+      name: "Extract and Decompose"
+      tasks:
+        - id: "extract-1"
+          type: "refactoring"
+          title: "Extract payment validation logic"
+          prompt: |
+            Extract validation into separate module:
+            - Create PaymentValidator class
+            - Move all validation logic
+            - Add proper error handling
+            - Maintain existing behavior
+            - Ensure all tests still pass
+          estimatedHours: 4
+          dependencies: ["test-2"]
+          
+        - id: "extract-2"
+          type: "refactoring"
+          title: "Extract provider-specific logic"
+          prompt: |
+            Create payment provider abstraction:
+            - Define PaymentProvider interface
+            - Extract Stripe-specific code
+            - Create provider factory
+            - Implement adapter pattern
+            - Keep functionality unchanged
+          estimatedHours: 5
+          dependencies: ["extract-1"]
+          
+        - id: "extract-3"
+          type: "refactoring"
+          title: "Extract configuration management"
+          prompt: |
+            Centralize configuration:
+            - Create PaymentConfig class
+            - Extract all hardcoded values
+            - Add environment variable support
+            - Implement config validation
+            - Update all references
+          estimatedHours: 3
+          dependencies: ["extract-2"]
+          
+    - id: "phase-4-restructure"
+      name: "Restructure Architecture"
+      tasks:
+        - id: "restructure-1"
+          type: "refactoring"
+          title: "Implement strategy pattern for payment types"
+          prompt: |
+            Refactor payment type handling:
+            - Create PaymentStrategy interface
+            - Implement strategies for each payment type
+            - Use factory for strategy selection
+            - Remove large switch statements
+            - Maintain exact behavior
+          estimatedHours: 6
+          dependencies: ["extract-3"]
+          
+        - id: "restructure-2"
+          type: "refactoring"
+          title: "Introduce dependency injection"
+          prompt: |
+            Implement proper dependency management:
+            - Create service container
+            - Wire dependencies properly
+            - Remove hidden dependencies
+            - Make testing easier
+            - Keep API unchanged
+          estimatedHours: 4
+          dependencies: ["restructure-1"]
+          
+    - id: "phase-5-optimize"
+      name: "Optimize and Clean"
+      tasks:
+        - id: "optimize-1"
+          type: "refactoring"
+          title: "Remove code duplication"
+          prompt: |
+            Eliminate duplicate code:
+            - Identify repeated patterns
+            - Extract common functionality
+            - Create shared utilities
+            - Apply DRY principle
+            - Verify behavior unchanged
+          estimatedHours: 3
+          dependencies: ["restructure-2"]
+          
+        - id: "optimize-2"
+          type: "enhancement"
+          title: "Add comprehensive logging and monitoring"
+          prompt: |
+            Implement observability:
+            - Add structured logging
+            - Include correlation IDs
+            - Add performance metrics
+            - Create health checks
+            - Maintain backward compatibility
+          estimatedHours: 3
+          dependencies: ["optimize-1"]
+          
+    - id: "phase-6-documentation"
+      name: "Documentation and Knowledge Transfer"
+      tasks:
+        - id: "doc-1"
+          type: "documentation"
+          title: "Document new architecture"
+          prompt: |
+            Create comprehensive documentation:
+            - Architecture diagrams
+            - Class relationships
+            - Sequence diagrams
+            - API documentation
+            - Migration guide
+          estimatedHours: 4
+          dependencies: ["optimize-2"]
+          
+        - id: "doc-2"
+          type: "documentation"
+          title: "Create developer guide"
+          prompt: |
+            Write developer onboarding guide:
+            - How to add new payment providers
+            - Testing guidelines
+            - Configuration guide
+            - Troubleshooting section
+            - Best practices
+          estimatedHours: 3
+          dependencies: ["doc-1"]
+          
+  validation:
+    - "All existing tests must pass"
+    - "No change in external API"
+    - "Performance must not degrade"
+    - "Zero downtime deployment"
+    - "Backward compatibility maintained"
+    
+  deliverables:
+    - type: "refactored_code"
+      path: "src/services/payment/"
+      description: "Modernized payment processing module"
+      
+    - type: "test_suite"
+      path: "tests/payment/"
+      description: "Comprehensive test coverage"
+      
+    - type: "documentation"
+      path: "docs/architecture/payment-system.md"
+      description: "Architecture and developer documentation"
+      
+    - type: "metrics_report"
+      path: "docs/refactoring/payment-metrics.md"
+      description: "Before/after metrics comparison"
