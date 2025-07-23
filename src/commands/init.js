@@ -122,6 +122,13 @@ async function initCommand(options) {
         name: 'createEnv',
         message: 'Create .env file for API keys?',
         default: true
+      },
+      {
+        type: 'confirm',
+        name: 'setupApiKeys',
+        message: 'Would you like to configure API keys now?',
+        default: true,
+        when: (answers) => answers.createEnv
       }
     ]);
     
@@ -175,16 +182,96 @@ async function initCommand(options) {
     );
     
     // Create .env file
+    let keyAnswers; // Declare in outer scope
     if (answers.createEnv) {
+      let apiKeys = {
+        openai: 'your-openai-api-key-here',
+        anthropic: 'your-anthropic-api-key-here',
+        google: 'your-google-api-key-here'
+      };
+      
+      // Interactive API key setup
+      if (answers.setupApiKeys) {
+        console.log(chalk.blue('\n🔐 API Key Setup\n'));
+        console.log(chalk.gray('Leave blank to skip any key\n'));
+        
+        keyAnswers = await inquirer.prompt([
+          {
+            type: 'password',
+            name: 'openaiKey',
+            message: 'OpenAI API Key (sk-...):',
+            mask: '*',
+            validate: (input) => {
+              if (!input) return true; // Allow empty
+              if (input.startsWith('sk-') && input.length > 20) return true;
+              return 'Invalid OpenAI key format (should start with sk-)';
+            }
+          },
+          {
+            type: 'password',
+            name: 'anthropicKey',
+            message: 'Anthropic API Key (sk-ant-...):',
+            mask: '*',
+            validate: (input) => {
+              if (!input) return true; // Allow empty
+              if (input.startsWith('sk-ant-') && input.length > 20) return true;
+              return 'Invalid Anthropic key format (should start with sk-ant-)';
+            }
+          },
+          {
+            type: 'confirm',
+            name: 'testKeys',
+            message: 'Would you like to test the API keys?',
+            default: true,
+            when: (answers) => answers.openaiKey || answers.anthropicKey
+          }
+        ]);
+        
+        if (keyAnswers.openaiKey) apiKeys.openai = keyAnswers.openaiKey;
+        if (keyAnswers.anthropicKey) apiKeys.anthropic = keyAnswers.anthropicKey;
+        
+        // Test API keys if requested
+        if (keyAnswers.testKeys) {
+          spinner.text = 'Testing API keys...';
+          spinner.start();
+          
+          try {
+            // Import the AI client for testing
+            const { getAIModelClient } = require('@liftping/repochief-core/src/api/AIModelClient');
+            
+            // Set env vars temporarily for testing
+            if (keyAnswers.openaiKey) process.env.OPENAI_API_KEY = keyAnswers.openaiKey;
+            if (keyAnswers.anthropicKey) process.env.ANTHROPIC_API_KEY = keyAnswers.anthropicKey;
+            
+            const client = getAIModelClient({ mockMode: false });
+            const health = await client.healthCheck();
+            
+            spinner.stop();
+            
+            if (keyAnswers.openaiKey) {
+              console.log(chalk.green(`✅ OpenAI: ${health.openai ? 'Connected' : 'Failed - ' + health.openaiError}`));
+            }
+            if (keyAnswers.anthropicKey) {
+              console.log(chalk.green(`✅ Anthropic: ${health.anthropic ? 'Connected' : 'Failed - ' + health.anthropicError}`));
+            }
+            console.log();
+            
+          } catch (error) {
+            spinner.stop();
+            console.log(chalk.yellow('⚠️  Could not test API keys. You can test them later with: repochief status\n'));
+          }
+        }
+      }
+      
       const envContent = `# RepoChief API Keys
 # Get your API keys from:
 # - OpenAI: https://platform.openai.com/api-keys
 # - Anthropic: https://console.anthropic.com/
 # - Google AI: https://makersuite.google.com/app/apikey
 
-OPENAI_API_KEY=your-openai-api-key-here
-ANTHROPIC_API_KEY=your-anthropic-api-key-here
-GOOGLE_API_KEY=your-google-api-key-here
+OPENAI_API_KEY=${apiKeys.openai}
+ANTHROPIC_API_KEY=${apiKeys.anthropic}
+GOOGLE_API_KEY=${apiKeys.google}
 
 # Optional: Set default model
 # DEFAULT_MODEL=gpt-4o
@@ -195,8 +282,13 @@ GOOGLE_API_KEY=your-google-api-key-here
       
       fs.writeFileSync(path.join(projectDir, '.env'), envContent);
       
-      // Create .env.example
-      fs.writeFileSync(path.join(projectDir, '.env.example'), envContent);
+      // Create .env.example with placeholders
+      const exampleContent = envContent
+        .replace(apiKeys.openai, 'your-openai-api-key-here')
+        .replace(apiKeys.anthropic, 'your-anthropic-api-key-here')
+        .replace(apiKeys.google, 'your-google-api-key-here');
+      
+      fs.writeFileSync(path.join(projectDir, '.env.example'), exampleContent);
     }
     
     // Create .gitignore
@@ -289,9 +381,15 @@ Edit \`tasks/default.json\` to customize your AI agent tasks.
     console.log(chalk.blue('Next steps:'));
     console.log(chalk.gray(`1. cd ${answers.name}`));
     if (answers.createEnv) {
-      console.log(chalk.gray('2. Edit .env and add your API keys'));
-      console.log(chalk.gray('3. Run: repochief demo --mock  (to test without API costs)'));
-      console.log(chalk.gray('4. Run: repochief run tasks/default.json'));
+      if (!answers.setupApiKeys || (!keyAnswers?.openaiKey && !keyAnswers?.anthropicKey)) {
+        console.log(chalk.gray('2. Edit .env and add your API keys'));
+        console.log(chalk.gray('3. Run: repochief demo --mock  (to test without API costs)'));
+        console.log(chalk.gray('4. Run: repochief run tasks/default.json'));
+      } else {
+        console.log(chalk.gray('2. Run: repochief demo  (your API keys are configured!)'));
+        console.log(chalk.gray('3. Run: repochief run tasks/default.json'));
+        console.log(chalk.gray('Tip: Use --mock flag to avoid API costs during testing'));
+      }
     } else {
       console.log(chalk.gray('2. Create .env file with your API keys'));
       console.log(chalk.gray('3. Run: repochief run tasks/default.json'));
