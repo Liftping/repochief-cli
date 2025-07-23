@@ -10,7 +10,9 @@
     "test": "mocha tests/**/*.test.js --timeout 10000 --exit",
     "test:watch": "mocha tests/**/*.test.js --watch",
     "lint": "eslint src/ bin/ --ext .js",
-    "dev": "node bin/repochief.js"
+    "dev": "node bin/repochief.js",
+    "security:scan": "secretlint \"**/*\" --secretlintrc ../../.secretlintrc.json || true",
+    "prepublishOnly": "npm run lint && npm run test && npm run security:scan && npm pack --dry-run"
   },
   "keywords": [
     "repochief",
@@ -24,7 +26,7 @@
   "author": "Liftping",
   "license": "MIT",
   "dependencies": {
-    "@liftping/repochief-core": "file:../repochief-core",
+    "@liftping/repochief-core": "^0.1.0",
     "chalk": "^4.1.2",
     "commander": "^9.5.0",
     "ora": "^5.4.1",
