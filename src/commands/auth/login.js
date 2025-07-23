@@ -1,0 +1,122 @@
+const { Command } = require('commander');
+const chalk = require('chalk');
+const open = require('open');
+const ora = require('ora');
+const { getOrCreateDeviceId, storeToken } = require('../../utils/device');
+const { deviceFlow } = require('../../utils/oauth');
+const { APIClient } = require('../../utils/api-client');
+
+/**
+ * Login command for OAuth device flow authentication
+ */
+function createLoginCommand() {
+  const command = new Command('login');
+  
+  command
+    .description('Authenticate with RepoChief cloud')
+    .option('--token <token>', 'Use a Personal Access Token (PAT) instead of OAuth')
+    .option('--no-browser', 'Don\'t automatically open the browser')
+    .action(async (options) => {
+      try {
+        if (options.token) {
+          await handleTokenAuth(options.token);
+        } else {
+          await handleOAuthFlow(options);
+        }
+      } catch (error) {
+        console.error(chalk.red('Authentication failed:'), error.message);
+        process.exit(1);
+      }
+    });
+
+  return command;
+}
+
+/**
+ * Handle Personal Access Token authentication
+ */
+async function handleTokenAuth(token) {
+  const spinner = ora('Validating token...').start();
+  
+  try {
+    // Get or create device ID
+    const deviceId = await getOrCreateDeviceId();
+    
+    // Validate token with API
+    const client = new APIClient();
+    const response = await client.validateToken(token);
+    
+    if (response.valid) {
+      // Store token securely
+      await storeToken(deviceId, token);
+      
+      spinner.succeed('Authentication successful!');
+      console.log(chalk.green(`✓ Logged in as ${response.user.email}`));
+      console.log(chalk.gray(`  Device: ${deviceId}`));
+    } else {
+      spinner.fail('Invalid token');
+      throw new Error('The provided token is invalid or expired');
+    }
+  } catch (error) {
+    spinner.fail('Authentication failed');
+    throw error;
+  }
+}
+
+/**
+ * Handle OAuth device flow authentication
+ */
+async function handleOAuthFlow(options) {
+  const spinner = ora('Initializing authentication...').start();
+  
+  try {
+    // Get or create device ID
+    const deviceId = await getOrCreateDeviceId();
+    
+    // Start device flow
+    const authData = await deviceFlow();
+    
+    spinner.stop();
+    
+    // Display user instructions
+    console.log('');
+    console.log(chalk.cyan('To authenticate, please visit:'));
+    console.log(chalk.bold.white(authData.verification_uri));
+    console.log('');
+    console.log('Enter this code:');
+    console.log(chalk.bold.yellow(authData.user_code));
+    console.log('');
+    
+    // Open browser if not disabled
+    if (options.browser !== false) {
+      const fullUrl = authData.verification_uri_complete || 
+                      `${authData.verification_uri}?user_code=${authData.user_code}`;
+      await open(fullUrl);
+    }
+    
+    // Poll for completion
+    spinner.text = 'Waiting for authentication...';
+    spinner.start();
+    
+    const tokens = await authData.pollForToken();
+    
+    // Store tokens securely
+    await storeToken(deviceId, tokens.refresh_token);
+    
+    spinner.succeed('Authentication successful!');
+    console.log(chalk.green(`✓ Logged in as ${tokens.user.email}`));
+    console.log(chalk.gray(`  Device: ${deviceId}`));
+    
+    // Show next steps
+    console.log('');
+    console.log(chalk.cyan('Next steps:'));
+    console.log('  • Run', chalk.bold('repochief status'), 'to verify connection');
+    console.log('  • Run', chalk.bold('repochief sync'), 'to synchronize your projects');
+    
+  } catch (error) {
+    spinner.fail('Authentication failed');
+    throw error;
+  }
+}
+
+module.exports = createLoginCommand;

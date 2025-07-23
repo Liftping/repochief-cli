@@ -27,11 +27,15 @@
   "license": "MIT",
   "dependencies": {
     "@liftping/repochief-core": "^0.1.0",
+    "axios": "^1.6.7",
     "chalk": "^4.1.2",
     "commander": "^9.5.0",
     "dotenv": "^16.3.1",
     "inquirer": "^8.2.6",
+    "keytar": "^7.9.0",
+    "open": "^8.4.2",
     "ora": "^5.4.1",
+    "uuid": "^9.0.1",
     "winston": "^3.11.0"
   },
   "devDependencies": {

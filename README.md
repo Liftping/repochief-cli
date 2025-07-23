@@ -57,7 +57,37 @@ Execute your AI agent tasks:
 repochief run tasks/default.json
 ```
 
+## Authentication
+
+RepoChief CLI supports cloud synchronization across multiple devices. First, authenticate with your RepoChief account:
+
+```bash
+# Login with OAuth device flow (recommended)
+repochief auth login
+
+# Login with Personal Access Token
+repochief auth login --token your-pat-token
+
+# Check authentication status
+repochief auth status
+
+# Show detailed usage info
+repochief auth status --verbose
+
+# Logout
+repochief auth logout
+```
+
 ## Commands
+
+### `repochief auth`
+
+Manage authentication with RepoChief cloud.
+
+Subcommands:
+- `login` - Authenticate using OAuth device flow or PAT
+- `logout` - Log out from RepoChief cloud
+- `status` - Check authentication and sync status
 
 ### `repochief run <task-file>`
 
@@ -171,6 +201,51 @@ RepoChief includes pre-configured agent profiles:
 - `MOCK_MODE`: Set to "true" for mock mode
 - `DEFAULT_MODEL`: Default AI model to use
 - `DEBUG`: Enable debug logging
+- `REPOCHIEF_API_URL`: Custom API endpoint (default: https://api.repochief.com/v1)
+- `REPOCHIEF_TOKEN`: Personal Access Token for CI/CD environments
+
+## Multi-Device Usage
+
+RepoChief CLI supports seamless usage across multiple devices:
+
+### Personal Devices
+
+```bash
+# On your work laptop
+repochief auth login
+# Device name: MacBook Pro - Work
+
+# On your home desktop
+repochief auth login
+# Device name: Home Desktop - Windows
+
+# Check all connected devices
+repochief auth status --verbose
+```
+
+### CI/CD Integration
+
+For automated environments, use Personal Access Tokens:
+
+```bash
+# Generate PAT from web dashboard
+# Then in CI/CD:
+export REPOCHIEF_TOKEN="rcp_xxxxxxxxxxxxxxxx"
+repochief run tasks/ci-validation.json
+```
+
+### Device Management
+
+```bash
+# Logout from current device only
+repochief auth logout
+
+# Logout from all devices
+repochief auth logout --all-devices
+
+# View device-specific usage
+repochief auth status --verbose
+```
 
 ## Examples
 

@@ -20,6 +20,7 @@ const runCommand = require('../src/commands/run');
 const initCommand = require('../src/commands/init');
 const agentsCommand = require('../src/commands/agents');
 const statusCommand = require('../src/commands/status');
+const authCommand = require('../src/commands/auth');
 
 // ASCII Art Banner
 const banner = `
@@ -81,6 +82,9 @@ program
   .option('-t, --tasks', 'Show task progress')
   .action(statusCommand);
 
+// Auth command - manage authentication
+program.addCommand(authCommand());
+
 // Demo command - run the TODO API demo
 program
   .command('demo')
@@ -132,6 +136,7 @@ program
         name: 'action',
         message: 'What would you like to do?',
         choices: [
+          { name: '🔐 Authenticate with cloud', value: 'auth' },
           { name: '🚀 Run TODO API demo', value: 'demo' },
           { name: '📄 Initialize new project', value: 'init' },
           { name: '🤖 Manage agent profiles', value: 'agents' },
