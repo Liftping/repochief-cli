@@ -29,16 +29,17 @@
     "@liftping/repochief-core": "^0.1.0",
     "chalk": "^4.1.2",
     "commander": "^9.5.0",
-    "ora": "^5.4.1",
-    "inquirer": "^8.2.6",
     "dotenv": "^16.3.1",
+    "inquirer": "^8.2.6",
+    "ora": "^5.4.1",
     "winston": "^3.11.0"
   },
   "devDependencies": {
     "chai": "^4.3.10",
     "eslint": "^8.56.0",
     "mocha": "^10.2.0",
-    "sinon": "^17.0.1"
+    "sinon": "^17.0.1",
+    "source-map-support": "^0.5.21"
   },
   "engines": {
     "node": ">=18.0.0"

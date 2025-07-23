@@ -209,6 +209,12 @@ Install the core package:
 npm install @liftping/repochief-core
 ```
 
+## Security
+
+- Never commit API keys to the repository
+- Use environment variables for sensitive configuration
+- Report security vulnerabilities to: security@liftping.com
+
 ## Contributing
 
 See the main [RepoChief repository](https://github.com/liftping/repochief) for contribution guidelines.
