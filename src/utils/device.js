@@ -2,8 +2,21 @@ const { promises: fs } = require('fs');
 const path = require('path');
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
-const keytar = require('keytar');
 const inquirer = require('inquirer');
+
+// Lazy load keytar to avoid loading errors on systems without libsecret
+let keytar;
+function getKeytar() {
+  if (!keytar) {
+    try {
+      keytar = require('keytar');
+    } catch (error) {
+      // keytar not available - will use fallback token storage
+      keytar = null;
+    }
+  }
+  return keytar;
+}
 
 // Configuration directory
 const CONFIG_DIR = path.join(os.homedir(), '.repochief');
@@ -105,24 +118,33 @@ async function promptForDeviceName() {
  * Store token securely using OS keychain
  */
 async function storeToken(deviceId, token) {
-  try {
-    await keytar.setPassword(SERVICE_NAME, deviceId, token);
-  } catch (error) {
-    // Fallback to encrypted file storage if keychain fails
-    console.warn('Keychain access failed, using encrypted file storage');
-    await storeTokenFallback(deviceId, token);
+  const keytarLib = getKeytar();
+  if (keytarLib) {
+    try {
+      await keytarLib.setPassword(SERVICE_NAME, deviceId, token);
+      return;
+    } catch (error) {
+      // Fallback to encrypted file storage if keychain fails
+      console.warn('Keychain access failed, using encrypted file storage');
+    }
   }
+  
+  // Use fallback storage
+  await storeTokenFallback(deviceId, token);
 }
 
 /**
  * Get token from secure storage
  */
 async function getToken(deviceId) {
-  try {
-    const token = await keytar.getPassword(SERVICE_NAME, deviceId);
-    if (token) return token;
-  } catch (error) {
-    // Try fallback storage
+  const keytarLib = getKeytar();
+  if (keytarLib) {
+    try {
+      const token = await keytarLib.getPassword(SERVICE_NAME, deviceId);
+      if (token) return token;
+    } catch (error) {
+      // Try fallback storage
+    }
   }
   
   // Try fallback storage
@@ -133,10 +155,13 @@ async function getToken(deviceId) {
  * Remove token from secure storage
  */
 async function removeToken(deviceId) {
-  try {
-    await keytar.deletePassword(SERVICE_NAME, deviceId);
-  } catch (error) {
-    // Try fallback removal
+  const keytarLib = getKeytar();
+  if (keytarLib) {
+    try {
+      await keytarLib.deletePassword(SERVICE_NAME, deviceId);
+    } catch (error) {
+      // Try fallback removal
+    }
   }
   
   // Remove fallback storage
