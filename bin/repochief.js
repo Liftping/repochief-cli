@@ -15,12 +15,16 @@ const packageInfo = require('../package.json');
 // Load environment variables
 require('dotenv').config();
 
+// System requirements check
+const { validateForCommand } = require('../src/utils/system-check');
+
 // Commands
 const runCommand = require('../src/commands/run');
 const initCommand = require('../src/commands/init');
 const agentsCommand = require('../src/commands/agents');
 const statusCommand = require('../src/commands/status');
 const authCommand = require('../src/commands/auth');
+const doctorCommand = require('../src/commands/doctor');
 
 // ASCII Art Banner
 const banner = `
@@ -141,6 +145,7 @@ program
           { name: '📄 Initialize new project', value: 'init' },
           { name: '🤖 Manage agent profiles', value: 'agents' },
           { name: '📊 Check system status', value: 'status' },
+          { name: '🩺 Run system diagnostics', value: 'doctor' },
           { name: '❌ Exit', value: 'exit' }
         ]
       }
@@ -197,22 +202,53 @@ program
     }
   });
 
+// Doctor command - system diagnostics
+program
+  .command('doctor')
+  .description('Check RepoChief system health and dependencies')
+  .option('-v, --verbose', 'Show detailed information')
+  .action(doctorCommand);
+
 // Error handling
 program.exitOverride();
 
-try {
-  program.parse(process.argv);
-  
-  // Show help if no command provided
-  if (!process.argv.slice(2).length) {
-    program.outputHelp();
+// Main CLI entry point
+(async () => {
+  try {
+    // Extract command name from arguments
+    const args = process.argv.slice(2);
+    let commandName = args[0];
+    
+    // Handle special cases
+    if (!commandName || commandName.startsWith('-')) {
+      commandName = 'help';
+    }
+    
+    // Skip validation for these commands
+    const skipValidation = ['--version', '-v', '--help', '-h'];
+    if (!skipValidation.includes(commandName)) {
+      // Quick validation for essential commands
+      const isValid = await validateForCommand(commandName);
+      if (!isValid) {
+        process.exit(1);
+      }
+    }
+    
+    // Parse commands
+    program.parse(process.argv);
+    
+    // Show help if no command provided
+    if (!process.argv.slice(2).length) {
+      program.outputHelp();
+      process.exit(0);
+    }
+  } catch (error) {
+    if (error.code === 'commander.unknownCommand') {
+      console.error(chalk.red(`\n❌ Unknown command: ${error.message}`));
+      console.log(chalk.yellow('Run "repochief --help" to see available commands\n'));
+    } else {
+      console.error(chalk.red(`\n❌ Error: ${error.message}\n`));
+    }
+    process.exit(1);
   }
-} catch (error) {
-  if (error.code === 'commander.unknownCommand') {
-    console.error(chalk.red(`\n❌ Unknown command: ${error.message}`));
-    console.log(chalk.yellow('Run "repochief --help" to see available commands\n'));
-  } else {
-    console.error(chalk.red(`\n❌ Error: ${error.message}\n`));
-  }
-  process.exit(1);
-}
+})();
