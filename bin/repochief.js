@@ -26,6 +26,9 @@ const statusCommand = require('../src/commands/status');
 const authCommand = require('../src/commands/auth');
 const doctorCommand = require('../src/commands/doctor');
 
+// Prediction integration
+const { wrapWithPrediction } = require('../src/integrations/prediction');
+
 // ASCII Art Banner
 const banner = `
 ╔═══════════════════════════════════════╗
@@ -58,7 +61,7 @@ program
   .option('-m, --mock', 'Run in mock mode (no API calls)')
   .option('-w, --watch', 'Watch progress in real-time')
   .option('-o, --output <dir>', 'Output directory for results', './output')
-  .action(runCommand);
+  .action(wrapWithPrediction(runCommand, 'run'));
 
 // Init command - setup project
 program
