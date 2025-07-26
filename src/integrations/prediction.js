@@ -1,7 +1,8 @@
 /**
  * Prediction Integration for RepoChief CLI
  * 
- * Integrates the prediction system to provide cost/time estimates
+ * Integrates the AI Orchestration Prediction system to provide cost/time estimates
+ * using the CoreEventAdapter and FeatureExtractor components.
  */
 
 const chalk = require('chalk');
@@ -16,35 +17,36 @@ async function initializePrediction() {
   if (isInitialized) return predictionSystem;
   
   try {
-    // Check if prediction package is available
-    const { 
-      DataCollector,
-      CLIEventAdapter,
-      FeatureExtractor,
-      PredictionService 
-    } = require('@liftping/repochief-prediction');
+    // Try to use the core repochief components first
+    const DataCollector = require('../../repochief/src/collectors/DataCollector');
+    const FeatureExtractor = require('../../repochief/src/features/FeatureExtractor');
+    const CLIEventAdapter = require('../../repochief/src/cli/CLIEventAdapter');
     
-    // Check required environment
-    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-    const postgresUrl = process.env.DATABASE_URL;
+    console.log(chalk.gray('⚡ Initializing prediction system...'));
     
-    if (!postgresUrl) {
-      console.log(chalk.gray('⚡ Prediction system unavailable (no DATABASE_URL)'));
-      return null;
-    }
+    // Initialize components with minimal configuration
+    const collector = new DataCollector({
+      storage: 'local',
+      batchSize: 50,
+      flushInterval: 30000, // 30 seconds
+      validation: true
+    });
     
-    // Initialize components
-    const collector = new DataCollector({ redisUrl });
-    const featureExtractor = new FeatureExtractor();
-    const predictionService = new PredictionService(postgresUrl);
+    const featureExtractor = new FeatureExtractor({
+      enableComplexityAnalysis: true,
+      enableContextAnalysis: true,
+      enablePatternMatching: true,
+      enableCostPrediction: true
+    });
     
-    // Create CLI adapter
+    // Create CLI adapter with appropriate sampling
     const adapter = new CLIEventAdapter(collector, featureExtractor, {
-      mode: 'shadow',
+      mode: process.env.CLI_PREDICTION_MODE || 'shadow',
+      enablePredictions: true,
       sampling: {
         rate: 1.0,
-        alwaysCollect: ['run', 'test', 'deploy'],
-        neverCollect: ['status', 'list', 'help']
+        alwaysCollect: ['run', 'demo'],
+        neverCollect: ['status', 'help', '--help', '-h', '--version', '-v']
       },
       privacy: {
         enablePIIDetection: true,
@@ -54,22 +56,71 @@ async function initializePrediction() {
     
     predictionSystem = {
       adapter,
-      predictionService,
       collector,
-      wrapCommand: (fn, name) => adapter.wrapCommand(fn, name)
+      featureExtractor,
+      wrapCommand: (fn, name) => adapter.wrapCommand(fn, name),
+      getCommandPrediction: (name, args, options) => adapter.getCommandPrediction(name, args, options),
+      analyzeCommand: (name, args, options) => adapter.analyzeCommand(name, args, options),
+      getStatistics: () => adapter.getStatistics()
     };
     
     isInitialized = true;
-    console.log(chalk.green('✨ Prediction system initialized'));
+    console.log(chalk.green('✨ AI Orchestration Prediction system initialized'));
     
     return predictionSystem;
     
   } catch (error) {
-    // Prediction package not available or initialization failed
-    if (error.code !== 'MODULE_NOT_FOUND') {
-      console.error(chalk.yellow('⚠️  Prediction system error:'), error.message);
+    // Core components not available, try legacy prediction package
+    try {
+      const { 
+        DataCollector,
+        CLIEventAdapter,
+        FeatureExtractor 
+      } = require('@liftping/repochief-prediction');
+      
+      console.log(chalk.gray('⚡ Using legacy prediction package...'));
+      
+      // Check required environment for legacy package
+      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+      const postgresUrl = process.env.DATABASE_URL;
+      
+      if (!postgresUrl) {
+        console.log(chalk.gray('⚡ Prediction system unavailable (no DATABASE_URL for legacy package)'));
+        return null;
+      }
+      
+      // Initialize legacy components
+      const collector = new DataCollector({ redisUrl });
+      const featureExtractor = new FeatureExtractor();
+      
+      const adapter = new CLIEventAdapter(collector, featureExtractor, {
+        mode: 'shadow',
+        sampling: {
+          rate: 1.0,
+          alwaysCollect: ['run', 'demo'],
+          neverCollect: ['status', 'help', '--help']
+        }
+      });
+      
+      predictionSystem = {
+        adapter,
+        collector,
+        featureExtractor,
+        wrapCommand: (fn, name) => adapter.wrapCommand(fn, name)
+      };
+      
+      isInitialized = true;
+      console.log(chalk.green('✨ Legacy prediction system initialized'));
+      
+      return predictionSystem;
+      
+    } catch (legacyError) {
+      // Neither core nor legacy package available
+      if (error.code !== 'MODULE_NOT_FOUND' && legacyError.code !== 'MODULE_NOT_FOUND') {
+        console.error(chalk.yellow('⚠️  Prediction system error:'), error.message);
+      }
+      return null;
     }
-    return null;
   }
 }
 

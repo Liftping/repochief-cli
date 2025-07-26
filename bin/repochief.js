@@ -25,6 +25,7 @@ const agentsCommand = require('../src/commands/agents');
 const statusCommand = require('../src/commands/status');
 const authCommand = require('../src/commands/auth');
 const doctorCommand = require('../src/commands/doctor');
+const predictCommand = require('../src/commands/predict');
 
 // Prediction integration
 const { wrapWithPrediction } = require('../src/integrations/prediction');
@@ -211,6 +212,19 @@ program
   .description('Check RepoChief system health and dependencies')
   .option('-v, --verbose', 'Show detailed information')
   .action(doctorCommand);
+
+// Predict command - show predictions for commands
+program
+  .command('predict <command-name>')
+  .description('Show predictions for a command before running it')
+  .option('--args <args>', 'Command arguments (space-separated)')
+  .option('-a, --agents <number>', 'Number of agents (for run command)')
+  .option('-b, --budget <amount>', 'Budget amount (for run command)')
+  .option('-m, --mock', 'Mock mode flag (for run command)')
+  .option('-w, --watch', 'Watch mode flag (for run command)')
+  .option('-o, --output <dir>', 'Output directory (for run command)')
+  .option('--stats', 'Show prediction system statistics')
+  .action(predictCommand);
 
 // Error handling
 program.exitOverride();
