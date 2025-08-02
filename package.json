@@ -55,5 +55,8 @@
     "src",
     "README.md",
     "LICENSE"
-  ]
+  ],
+  "repository": {
+    "url": "https://github.com/liftping/repochief-cli.git"
+  }
 }
