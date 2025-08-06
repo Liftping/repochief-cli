@@ -1,0 +1,18 @@
+{
+  "session": "repochief-1754500074652",
+  "timestamp": "2025-08-06T17:07:56.684Z",
+  "tasks": [
+    {
+      "taskId": "test-repochief",
+      "status": "completed",
+      "tokensUsed": 1850,
+      "cost": 0.018500000000000003,
+      "timestamp": "2025-08-06T17:07:56.682Z"
+    }
+  ],
+  "totalTasks": 1,
+  "completedTasks": 1,
+  "failedTasks": 0,
+  "totalCost": 0.018500000000000003,
+  "totalTokens": 1850
+}

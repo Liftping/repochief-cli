@@ -1,0 +1,42 @@
+{
+  "taskId": "production-test",
+  "timestamp": "2025-08-06T17:19:56.965Z",
+  "status": "completed",
+  "output": "// test/todos.test.js\nconst chai = require('chai');\nconst chaiHttp = require('chai-http');\nconst sinon = require('sinon');\nconst app = require('../app');\n\nchai.use(chaiHttp);\nconst { expect } = chai;\n\ndescribe('TODO API', () => {\n    let server;\n    \n    beforeEach(() => {\n        // Reset todos before each test\n        server = chai.request(app);\n    });\n    \n    describe('GET /api/todos', () => {\n        it('should return empty array initially', async () => {\n            const res = await server.get('/api/todos');\n            expect(res).to.have.status(200);\n            expect(res.body).to.have.property('data').that.is.an('array').with.length(0);\n            expect(res.body).to.have.property('total', 0);\n        });\n        \n        it('should support pagination', async () => {\n            // Create multiple todos\n            for (let i = 0; i < 15; i++) {\n                await server.post('/api/todos').send({ title: `Todo ${i + 1}` });\n            }\n            \n            const res = await server.get('/api/todos?page=2&limit=10');\n            expect(res).to.have.status(200);\n            expect(res.body.data).to.have.length(5);\n            expect(res.body.page).to.equal(2);\n        });\n    });\n    \n    describe('POST /api/todos', () => {\n        it('should create a new todo', async () => {\n            const newTodo = {\n                title: 'Test Todo',\n                description: 'Test Description'\n            };\n            \n            const res = await server.post('/api/todos').send(newTodo);\n            expect(res).to.have.status(201);\n            expect(res.body).to.have.property('id');\n            expect(res.body.title).to.equal(newTodo.title);\n            expect(res.body.completed).to.be.false;\n            expect(res.body).to.have.property('createdAt');\n        });\n        \n        it('should validate required title', async () => {\n            const res = await server.post('/api/todos').send({});\n            expect(res).to.have.status(400);\n            expect(res.body).to.have.property('errors');\n        });\n        \n        it('should validate title length', async () => {\n            const res = await server.post('/api/todos').send({\n                title: 'a'.repeat(201)\n            });\n            expect(res).to.have.status(400);\n        });\n    });\n    \n    describe('GET /api/todos/:id', () => {\n        it('should return 404 for non-existent todo', async () => {\n            const res = await server.get('/api/todos/550e8400-e29b-41d4-a716-446655440000');\n            expect(res).to.have.status(404);\n        });\n        \n        it('should validate UUID format', async () => {\n            const res = await server.get('/api/todos/invalid-id');\n            expect(res).to.have.status(400);\n        });\n    });\n    \n    describe('PUT /api/todos/:id', () => {\n        it('should update an existing todo', async () => {\n            // Create a todo first\n            const createRes = await server.post('/api/todos').send({ title: 'Original' });\n            const todoId = createRes.body.id;\n            \n            const res = await server\n                .put(`/api/todos/${todoId}`)\n                .send({ title: 'Updated', completed: true });\n                \n            expect(res).to.have.status(200);\n            expect(res.body.title).to.equal('Updated');\n            expect(res.body.completed).to.be.true;\n            expect(res.body.updatedAt).to.not.equal(createRes.body.updatedAt);\n        });\n    });\n    \n    describe('DELETE /api/todos/:id', () => {\n        it('should delete an existing todo', async () => {\n            // Create a todo first\n            const createRes = await server.post('/api/todos').send({ title: 'To Delete' });\n            const todoId = createRes.body.id;\n            \n            const res = await server.delete(`/api/todos/${todoId}`);\n            expect(res).to.have.status(204);\n            \n            // Verify it's deleted\n            const getRes = await server.get(`/api/todos/${todoId}`);\n            expect(getRes).to.have.status(404);\n        });\n    });\n});",
+  "tokensUsed": 1850,
+  "cost": 0.018500000000000003,
+  "duration": 2000,
+  "qualityScore": 1,
+  "qualityResults": {
+    "passed": true,
+    "gates": {
+      "test": {
+        "status": "skipped",
+        "reason": "Gate not available"
+      },
+      "lint": {
+        "status": "skipped",
+        "reason": "Gate not available"
+      },
+      "security": {
+        "status": "pass",
+        "issues": [],
+        "stats": {
+          "errors": 0,
+          "warnings": 0,
+          "info": 0
+        },
+        "gate": "SecurityGate",
+        "duration": 1,
+        "attempts": 1
+      }
+    },
+    "summary": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 2,
+      "errors": 0
+    }
+  }
+}

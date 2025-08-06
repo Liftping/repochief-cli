@@ -1,0 +1,111 @@
+// test/todos.test.js
+const chai = require('chai');
+const chaiHttp = require('chai-http');
+const sinon = require('sinon');
+const app = require('../app');
+
+chai.use(chaiHttp);
+const { expect } = chai;
+
+describe('TODO API', () => {
+    let server;
+    
+    beforeEach(() => {
+        // Reset todos before each test
+        server = chai.request(app);
+    });
+    
+    describe('GET /api/todos', () => {
+        it('should return empty array initially', async () => {
+            const res = await server.get('/api/todos');
+            expect(res).to.have.status(200);
+            expect(res.body).to.have.property('data').that.is.an('array').with.length(0);
+            expect(res.body).to.have.property('total', 0);
+        });
+        
+        it('should support pagination', async () => {
+            // Create multiple todos
+            for (let i = 0; i < 15; i++) {
+                await server.post('/api/todos').send({ title: `Todo ${i + 1}` });
+            }
+            
+            const res = await server.get('/api/todos?page=2&limit=10');
+            expect(res).to.have.status(200);
+            expect(res.body.data).to.have.length(5);
+            expect(res.body.page).to.equal(2);
+        });
+    });
+    
+    describe('POST /api/todos', () => {
+        it('should create a new todo', async () => {
+            const newTodo = {
+                title: 'Test Todo',
+                description: 'Test Description'
+            };
+            
+            const res = await server.post('/api/todos').send(newTodo);
+            expect(res).to.have.status(201);
+            expect(res.body).to.have.property('id');
+            expect(res.body.title).to.equal(newTodo.title);
+            expect(res.body.completed).to.be.false;
+            expect(res.body).to.have.property('createdAt');
+        });
+        
+        it('should validate required title', async () => {
+            const res = await server.post('/api/todos').send({});
+            expect(res).to.have.status(400);
+            expect(res.body).to.have.property('errors');
+        });
+        
+        it('should validate title length', async () => {
+            const res = await server.post('/api/todos').send({
+                title: 'a'.repeat(201)
+            });
+            expect(res).to.have.status(400);
+        });
+    });
+    
+    describe('GET /api/todos/:id', () => {
+        it('should return 404 for non-existent todo', async () => {
+            const res = await server.get('/api/todos/550e8400-e29b-41d4-a716-446655440000');
+            expect(res).to.have.status(404);
+        });
+        
+        it('should validate UUID format', async () => {
+            const res = await server.get('/api/todos/invalid-id');
+            expect(res).to.have.status(400);
+        });
+    });
+    
+    describe('PUT /api/todos/:id', () => {
+        it('should update an existing todo', async () => {
+            // Create a todo first
+            const createRes = await server.post('/api/todos').send({ title: 'Original' });
+            const todoId = createRes.body.id;
+            
+            const res = await server
+                .put(`/api/todos/${todoId}`)
+                .send({ title: 'Updated', completed: true });
+                
+            expect(res).to.have.status(200);
+            expect(res.body.title).to.equal('Updated');
+            expect(res.body.completed).to.be.true;
+            expect(res.body.updatedAt).to.not.equal(createRes.body.updatedAt);
+        });
+    });
+    
+    describe('DELETE /api/todos/:id', () => {
+        it('should delete an existing todo', async () => {
+            // Create a todo first
+            const createRes = await server.post('/api/todos').send({ title: 'To Delete' });
+            const todoId = createRes.body.id;
+            
+            const res = await server.delete(`/api/todos/${todoId}`);
+            expect(res).to.have.status(204);
+            
+            // Verify it's deleted
+            const getRes = await server.get(`/api/todos/${todoId}`);
+            expect(getRes).to.have.status(404);
+        });
+    });
+});
