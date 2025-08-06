@@ -239,7 +239,7 @@ async function runCommand(taskFile, options) {
     
     // Get results
     const results = orchestrator.getResults();
-    const costReport = orchestrator.costTracker.getReport();
+    const costReport = orchestrator.costTracker ? orchestrator.costTracker.getReport() : { summary: { totalCost: 0 } };
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     
     // Save results using orchestrator's save method
@@ -266,9 +266,9 @@ Failed: ${failed}
 
 Cost:
 -----
-Total: $${costReport.costs.total.toFixed(2)}
-Input tokens: ${costReport.usage.totalTokens.input.toLocaleString()}
-Output tokens: ${costReport.usage.totalTokens.output.toLocaleString()}
+Total: $${(costReport.summary?.totalCost || 0).toFixed(2)}
+Input tokens: ${costReport.usage?.total?.input?.toLocaleString() || '0'}
+Output tokens: ${costReport.usage?.total?.output?.toLocaleString() || '0'}
 
 Results saved to: ${resultsPath}
 `;
@@ -282,7 +282,7 @@ Results saved to: ${resultsPath}
     if (failed > 0) {
       console.log(chalk.red(`❌ Failed: ${failed}`));
     }
-    console.log(chalk.yellow(`💰 Total cost: $${costReport.costs.total.toFixed(2)}`));
+    console.log(chalk.yellow(`💰 Total cost: $${(costReport.summary?.totalCost || 0).toFixed(2)}`));
     console.log(chalk.gray(`⏱️  Duration: ${duration}s`));
     console.log(chalk.gray(`📁 Results saved to: ${outputDir}`));
     console.log();
@@ -305,6 +305,9 @@ Results saved to: ${resultsPath}
       }
     }
   }
+  
+  // Force exit since something is keeping the process alive
+  process.exit(0);
 }
 
 module.exports = runCommand;
