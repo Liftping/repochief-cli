@@ -30,6 +30,7 @@ const orgCommand = require('../src/commands/org');
 const workspaceCommand = require('../src/commands/workspace');
 const scheduleCommand = require('../src/commands/schedule');
 const deploymentCommand = require('../src/commands/deployment');
+const intentCommand = require('../src/commands/intent');
 
 // Prediction integration
 const { wrapWithPrediction } = require('../src/integrations/prediction');
@@ -125,6 +126,14 @@ program
 // Deployment command - monitor deployments
 program.addCommand(deploymentCommand);
 
+// Intent command - manage intents
+program
+  .command('intent [subcommand]')
+  .description('Manage intents (Intent Canvas)')
+  .action((subcommand, options) => {
+    intentCommand.execute(subcommand, options);
+  });
+
 // Demo command - run the TODO API demo
 program
   .command('demo')
@@ -179,6 +188,7 @@ program
           { name: '🔐 Authenticate with cloud', value: 'auth' },
           { name: '🏢 Manage organizations', value: 'org' },
           { name: '📁 Manage workspaces', value: 'workspace' },
+          { name: '🎯 Manage intents (Intent Canvas)', value: 'intent' },
           { name: '⏰ Manage scheduled tasks', value: 'schedule' },
           { name: '🚀 Run TODO API demo', value: 'demo' },
           { name: '📄 Initialize new project', value: 'init' },

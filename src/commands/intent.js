@@ -1,0 +1,864 @@
+/**
+ * Intent management commands for RepoChief CLI
+ * Intent Canvas - Vision-to-Implementation Tracking
+ */
+
+const chalk = require('chalk');
+const inquirer = require('inquirer');
+const { getClient } = require('../auth/AuthManager');
+const BaseCommand = require('./BaseCommand');
+const Table = require('cli-table3');
+const moment = require('moment');
+
+class IntentCommand extends BaseCommand {
+    constructor() {
+        super();
+        this.commands = {
+            list: this.listIntents.bind(this),
+            create: this.createIntent.bind(this),
+            show: this.showIntent.bind(this),
+            update: this.updateIntent.bind(this),
+            complete: this.completeIntent.bind(this),
+            cancel: this.cancelIntent.bind(this),
+            task: this.manageTask.bind(this),
+            dashboard: this.showDashboard.bind(this)
+        };
+    }
+
+    async execute(subcommand, args) {
+        if (!subcommand || !this.commands[subcommand]) {
+            console.log(chalk.yellow('\nIntent Canvas - Vision-to-Implementation Tracking\n'));
+            console.log(chalk.cyan('Available intent commands:'));
+            console.log('  repochief intent list                 - List all intents');
+            console.log('  repochief intent create               - Create a new intent');
+            console.log('  repochief intent show <id>            - Show intent details');
+            console.log('  repochief intent update <id>          - Update intent');
+            console.log('  repochief intent complete <id>        - Mark intent as complete');
+            console.log('  repochief intent cancel <id>          - Cancel intent');
+            console.log('  repochief intent task <intent-id>     - Manage intent tasks');
+            console.log('  repochief intent dashboard            - Show intent dashboard');
+            console.log('');
+            console.log(chalk.gray('The Intent Canvas helps track strategic objectives'));
+            console.log(chalk.gray('from vision to implementation, solving the bootstrap problem.'));
+            return;
+        }
+
+        await this.commands[subcommand](args);
+    }
+
+    getContext() {
+        const config = this.loadConfig();
+        return {
+            org: config.activeOrganization || '@me',
+            workspace: config.activeWorkspace || 'default'
+        };
+    }
+
+    async listIntents(args) {
+        const client = await getClient();
+        if (!client) {
+            console.error(chalk.red('✗ Please login first: repochief auth login'));
+            return;
+        }
+
+        const { org, workspace } = this.getContext();
+        if (!workspace) {
+            console.error(chalk.red('✗ Please select a workspace first: repochief workspace switch'));
+            return;
+        }
+
+        try {
+            const { status, priority, overdue, limit = 20 } = args;
+            
+            const params = new URLSearchParams();
+            if (status) params.append('status', status);
+            if (priority) params.append('priority', priority);
+            if (overdue) params.append('overdue', 'true');
+            params.append('limit', limit);
+            
+            const response = await client.get(`/api/v1/orgs/${org}/workspaces/${workspace}/intents?${params}`);
+            const intents = response.data.intents;
+
+            console.log(chalk.cyan('\n🎯 Intent Canvas:\n'));
+            
+            if (intents.length === 0) {
+                console.log(chalk.gray('No intents found. Create one with: repochief intent create'));
+                console.log(chalk.gray('Intent Canvas bridges vision documents with implementation tasks.'));
+                return;
+            }
+
+            const table = new Table({
+                head: [
+                    chalk.cyan('Objective'),
+                    chalk.cyan('Status'),
+                    chalk.cyan('Progress'),
+                    chalk.cyan('Tasks'),
+                    chalk.cyan('Priority'),
+                    chalk.cyan('Target')
+                ],
+                colWidths: [40, 12, 10, 8, 10, 12]
+            });
+
+            intents.forEach(intent => {
+                const progressBar = this.getProgressBar(intent.stats.progress);
+                const statusColor = this.getStatusColor(intent.status);
+                const priorityColor = this.getPriorityColor(intent.metadata.priority);
+                
+                const targetDate = intent.targetCompletion ? 
+                    moment(intent.targetCompletion).format('MMM DD') : 'None';
+                
+                const overdueFlag = intent.stats.isOverdue ? chalk.red(' ⚠') : '';
+
+                table.push([
+                    intent.objective.length > 37 ? intent.objective.substring(0, 34) + '...' : intent.objective,
+                    statusColor(intent.status),
+                    progressBar,
+                    `${intent.stats.completedTasks}/${intent.stats.totalTasks}`,
+                    priorityColor(intent.metadata.priority),
+                    targetDate + overdueFlag
+                ]);
+            });
+
+            console.log(table.toString());
+            console.log('');
+            
+            // Summary
+            const activeCount = intents.filter(i => ['pending', 'in_progress'].includes(i.status)).length;
+            const completedCount = intents.filter(i => i.status === 'completed').length;
+            const overdueCount = intents.filter(i => i.stats.isOverdue).length;
+            
+            console.log(chalk.gray(`Total: ${intents.length} intents (${activeCount} active, ${completedCount} completed)`));
+            if (overdueCount > 0) {
+                console.log(chalk.red(`⚠ ${overdueCount} intents are overdue`));
+            }
+            console.log(chalk.gray('Use "repochief intent show <id>" for details, "repochief intent dashboard" for overview'));
+
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to list intents:'), error.message);
+        }
+    }
+
+    async createIntent() {
+        const client = await getClient();
+        if (!client) {
+            console.error(chalk.red('✗ Please login first: repochief auth login'));
+            return;
+        }
+
+        const { org, workspace } = this.getContext();
+        if (!workspace) {
+            console.error(chalk.red('✗ Please select a workspace first: repochief workspace switch'));
+            return;
+        }
+
+        console.log(chalk.cyan('\n🎯 Creating New Intent\n'));
+        console.log(chalk.gray('An intent represents a strategic objective that bridges'));
+        console.log(chalk.gray('high-level vision with concrete implementation tasks.\n'));
+
+        const answers = await inquirer.prompt([
+            {
+                type: 'input',
+                name: 'objective',
+                message: 'What is the objective of this intent?',
+                validate: input => input.length > 0 || 'Objective is required'
+            },
+            {
+                type: 'input',
+                name: 'businessValue',
+                message: 'What business value does this intent deliver?',
+                validate: input => input.length > 0 || 'Business value is required'
+            },
+            {
+                type: 'input',
+                name: 'problem',
+                message: 'What problem does this intent solve? (optional):',
+            },
+            {
+                type: 'input',
+                name: 'approach',
+                message: 'What is your approach to solving this? (optional):',
+            },
+            {
+                type: 'list',
+                name: 'priority',
+                message: 'Priority level:',
+                choices: [
+                    { name: 'Critical - Drop everything else', value: 'critical' },
+                    { name: 'High - Important for current milestone', value: 'high' },
+                    { name: 'Medium - Standard priority', value: 'medium' },
+                    { name: 'Low - When time permits', value: 'low' }
+                ],
+                default: 'medium'
+            },
+            {
+                type: 'list',
+                name: 'category',
+                message: 'Category:',
+                choices: [
+                    { name: 'Feature - New functionality', value: 'feature' },
+                    { name: 'Bug Fix - Fixing issues', value: 'bugfix' },
+                    { name: 'Infrastructure - Platform/tooling', value: 'infrastructure' },
+                    { name: 'Refactor - Code improvement', value: 'refactor' },
+                    { name: 'Research - Investigation/exploration', value: 'research' }
+                ],
+                default: 'feature'
+            },
+            {
+                type: 'input',
+                name: 'targetCompletion',
+                message: 'Target completion date (YYYY-MM-DD, optional):',
+                validate: input => {
+                    if (!input) return true;
+                    const date = new Date(input);
+                    return !isNaN(date.getTime()) || 'Invalid date format (use YYYY-MM-DD)';
+                }
+            },
+            {
+                type: 'confirm',
+                name: 'addTasks',
+                message: 'Add initial tasks now?',
+                default: true
+            }
+        ]);
+
+        let tasks = [];
+        if (answers.addTasks) {
+            console.log(chalk.cyan('\nAdding tasks to intent:'));
+            let addMore = true;
+            
+            while (addMore) {
+                const taskAnswers = await inquirer.prompt([
+                    {
+                        type: 'input',
+                        name: 'description',
+                        message: 'Task description:',
+                        validate: input => input.length > 0 || 'Task description is required'
+                    },
+                    {
+                        type: 'list',
+                        name: 'priority',
+                        message: 'Task priority:',
+                        choices: ['critical', 'high', 'medium', 'low'],
+                        default: 'medium'
+                    },
+                    {
+                        type: 'list',
+                        name: 'category',
+                        message: 'Task category:',
+                        choices: ['backend', 'frontend', 'infrastructure', 'testing', 'documentation', 'general'],
+                        default: 'general'
+                    }
+                ]);
+                
+                tasks.push(taskAnswers);
+                
+                const continueAnswer = await inquirer.prompt([
+                    {
+                        type: 'confirm',
+                        name: 'addMore',
+                        message: 'Add another task?',
+                        default: false
+                    }
+                ]);
+                
+                addMore = continueAnswer.addMore;
+            }
+        }
+
+        try {
+            const intentData = {
+                objective: answers.objective,
+                businessValue: answers.businessValue,
+                targetCompletion: answers.targetCompletion || null,
+                context: {
+                    problem: answers.problem || '',
+                    approach: answers.approach || '',
+                    successCriteria: []
+                },
+                metadata: {
+                    priority: answers.priority,
+                    category: answers.category,
+                    estimatedEffort: 'medium',
+                    tags: []
+                },
+                tasks: tasks
+            };
+
+            const response = await client.post(`/api/v1/orgs/${org}/workspaces/${workspace}/intents`, intentData);
+            const intent = response.data.intent;
+
+            console.log(chalk.green('\n✓ Intent created successfully!'));
+            console.log(chalk.cyan(`\nIntent: ${intent.objective}`));
+            console.log(`ID: ${intent.id}`);
+            console.log(`Business Value: ${intent.businessValue}`);
+            console.log(`Priority: ${intent.metadata.priority}`);
+            console.log(`Category: ${intent.metadata.category}`);
+            
+            if (intent.targetCompletion) {
+                console.log(`Target: ${moment(intent.targetCompletion).format('YYYY-MM-DD')}`);
+            }
+            
+            if (tasks.length > 0) {
+                console.log(`Tasks: ${tasks.length} initial tasks added`);
+            }
+            
+            console.log(chalk.gray('\nView details with: repochief intent show ' + intent.id));
+            console.log(chalk.gray('Track progress on the dashboard: repochief intent dashboard'));
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to create intent:'), error.message);
+        }
+    }
+
+    async showIntent(args) {
+        const intentId = args._[0];
+        if (!intentId) {
+            console.error(chalk.red('✗ Please provide an intent ID: repochief intent show <id>'));
+            return;
+        }
+
+        const client = await getClient();
+        if (!client) {
+            console.error(chalk.red('✗ Please login first: repochief auth login'));
+            return;
+        }
+
+        const { org, workspace } = this.getContext();
+        if (!workspace) {
+            console.error(chalk.red('✗ Please select a workspace first: repochief workspace switch'));
+            return;
+        }
+
+        try {
+            const response = await client.get(`/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}`);
+            const intent = response.data.intent;
+
+            console.log(chalk.cyan(`\n🎯 Intent: ${intent.objective}\n`));
+            
+            // Basic info
+            console.log(chalk.bold('Basic Information:'));
+            console.log(`  ID: ${intent.id}`);
+            console.log(`  Status: ${this.getStatusColor(intent.status)(intent.status)}`);
+            console.log(`  Business Value: ${intent.businessValue}`);
+            console.log(`  Priority: ${this.getPriorityColor(intent.metadata.priority)(intent.metadata.priority)}`);
+            console.log(`  Category: ${intent.metadata.category}`);
+            
+            if (intent.targetCompletion) {
+                const isOverdue = intent.stats.isOverdue;
+                const targetText = moment(intent.targetCompletion).format('YYYY-MM-DD');
+                console.log(`  Target: ${targetText}${isOverdue ? chalk.red(' (OVERDUE)') : ''}`);
+            }
+            
+            console.log(`  Created: ${moment(intent.createdAt).format('YYYY-MM-DD HH:mm')}`);
+            console.log(`  Updated: ${moment(intent.updatedAt).format('YYYY-MM-DD HH:mm')}`);
+            console.log('');
+
+            // Progress
+            const progressBar = this.getProgressBar(intent.stats.progress, 20);
+            console.log(chalk.bold('Progress:'));
+            console.log(`  ${progressBar} ${intent.stats.progress}%`);
+            console.log(`  Tasks: ${intent.stats.completedTasks}/${intent.stats.totalTasks} completed`);
+            
+            if (intent.stats.activeBlockers > 0) {
+                console.log(chalk.red(`  ⚠ ${intent.stats.activeBlockers} active blockers`));
+            }
+            console.log('');
+
+            // Context
+            if (intent.context.problem || intent.context.approach) {
+                console.log(chalk.bold('Context:'));
+                if (intent.context.problem) {
+                    console.log(`  Problem: ${intent.context.problem}`);
+                }
+                if (intent.context.approach) {
+                    console.log(`  Approach: ${intent.context.approach}`);
+                }
+                console.log('');
+            }
+
+            // Tasks
+            if (intent.tasks && intent.tasks.length > 0) {
+                console.log(chalk.bold('Tasks:'));
+                intent.tasks.forEach((task, index) => {
+                    const statusIcon = task.status === 'completed' ? chalk.green('✓') : 
+                                     task.status === 'in_progress' ? chalk.yellow('⏳') :
+                                     task.status === 'cancelled' ? chalk.red('✗') : '○';
+                    
+                    const priorityColor = this.getPriorityColor(task.priority);
+                    console.log(`  ${statusIcon} ${task.description}`);
+                    console.log(`    Status: ${task.status} | Priority: ${priorityColor(task.priority)} | Category: ${task.category}`);
+                    
+                    if (task.dependsOn && task.dependsOn.length > 0) {
+                        console.log(`    Depends on: ${task.dependsOn.join(', ')}`);
+                    }
+                });
+                console.log('');
+            }
+
+            // Active blockers
+            const activeBlockers = intent.blockers.filter(b => b.status === 'active');
+            if (activeBlockers.length > 0) {
+                console.log(chalk.bold(chalk.red('Active Blockers:')));
+                activeBlockers.forEach(blocker => {
+                    console.log(chalk.red(`  ⚠ ${blocker.issue}`));
+                    console.log(`    Impact: ${blocker.impact}`);
+                    if (blocker.solution) {
+                        console.log(`    Solution: ${blocker.solution}`);
+                    }
+                });
+                console.log('');
+            }
+
+            // Recent learnings
+            if (intent.learnings && intent.learnings.length > 0) {
+                console.log(chalk.bold('Recent Learnings:'));
+                intent.learnings.slice(-3).forEach(learning => {
+                    console.log(`  💡 ${learning.learning}`);
+                    console.log(`    ${moment(learning.createdAt).format('MMM DD, YYYY')}`);
+                });
+                console.log('');
+            }
+
+            // Recent history
+            if (intent.history && intent.history.length > 0) {
+                console.log(chalk.bold('Recent Activity:'));
+                intent.history.slice(0, 5).forEach(h => {
+                    console.log(`  ${moment(h.changedAt).format('MMM DD, HH:mm')} - ${h.description}`);
+                });
+                console.log('');
+            }
+
+            console.log(chalk.gray('Manage tasks: repochief intent task ' + intent.id));
+            console.log(chalk.gray('Update intent: repochief intent update ' + intent.id));
+
+        } catch (error) {
+            if (error.response?.status === 404) {
+                console.error(chalk.red('✗ Intent not found'));
+            } else {
+                console.error(chalk.red('✗ Failed to show intent:'), error.message);
+            }
+        }
+    }
+
+    async updateIntent(args) {
+        const intentId = args._[0];
+        if (!intentId) {
+            console.error(chalk.red('✗ Please provide an intent ID: repochief intent update <id>'));
+            return;
+        }
+
+        const client = await getClient();
+        if (!client) {
+            console.error(chalk.red('✗ Please login first: repochief auth login'));
+            return;
+        }
+
+        const { org, workspace } = this.getContext();
+        
+        try {
+            // First get current intent to show current values
+            const currentResponse = await client.get(`/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}`);
+            const current = currentResponse.data.intent;
+
+            console.log(chalk.cyan(`\n🎯 Updating Intent: ${current.objective}\n`));
+
+            const answers = await inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'field',
+                    message: 'What would you like to update?',
+                    choices: [
+                        { name: 'Objective', value: 'objective' },
+                        { name: 'Business Value', value: 'businessValue' },
+                        { name: 'Status', value: 'status' },
+                        { name: 'Priority', value: 'priority' },
+                        { name: 'Target Completion Date', value: 'targetCompletion' },
+                        { name: 'Problem Description', value: 'problem' },
+                        { name: 'Approach', value: 'approach' }
+                    ]
+                }
+            ]);
+
+            let updateData = {};
+
+            if (answers.field === 'objective') {
+                const newValue = await inquirer.prompt([{
+                    type: 'input',
+                    name: 'value',
+                    message: 'New objective:',
+                    default: current.objective
+                }]);
+                updateData.objective = newValue.value;
+            } else if (answers.field === 'businessValue') {
+                const newValue = await inquirer.prompt([{
+                    type: 'input',
+                    name: 'value',
+                    message: 'New business value:',
+                    default: current.businessValue
+                }]);
+                updateData.businessValue = newValue.value;
+            } else if (answers.field === 'status') {
+                const newValue = await inquirer.prompt([{
+                    type: 'list',
+                    name: 'value',
+                    message: 'New status:',
+                    choices: ['pending', 'in_progress', 'completed', 'cancelled'],
+                    default: current.status
+                }]);
+                updateData.status = newValue.value;
+            } else if (answers.field === 'priority') {
+                const newValue = await inquirer.prompt([{
+                    type: 'list',
+                    name: 'value',
+                    message: 'New priority:',
+                    choices: ['critical', 'high', 'medium', 'low'],
+                    default: current.metadata.priority
+                }]);
+                updateData.metadata = { priority: newValue.value };
+            } else if (answers.field === 'targetCompletion') {
+                const newValue = await inquirer.prompt([{
+                    type: 'input',
+                    name: 'value',
+                    message: 'Target completion date (YYYY-MM-DD):',
+                    default: current.targetCompletion ? moment(current.targetCompletion).format('YYYY-MM-DD') : ''
+                }]);
+                updateData.targetCompletion = newValue.value || null;
+            } else if (answers.field === 'problem') {
+                const newValue = await inquirer.prompt([{
+                    type: 'input',
+                    name: 'value',
+                    message: 'Problem description:',
+                    default: current.context.problem
+                }]);
+                updateData.context = { problem: newValue.value };
+            } else if (answers.field === 'approach') {
+                const newValue = await inquirer.prompt([{
+                    type: 'input',
+                    name: 'value',
+                    message: 'Approach description:',
+                    default: current.context.approach
+                }]);
+                updateData.context = { approach: newValue.value };
+            }
+
+            await client.put(`/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}`, updateData);
+            console.log(chalk.green('\n✓ Intent updated successfully'));
+
+        } catch (error) {
+            if (error.response?.status === 404) {
+                console.error(chalk.red('✗ Intent not found'));
+            } else {
+                console.error(chalk.red('✗ Failed to update intent:'), error.message);
+            }
+        }
+    }
+
+    async completeIntent(args) {
+        const intentId = args._[0];
+        if (!intentId) {
+            console.error(chalk.red('✗ Please provide an intent ID: repochief intent complete <id>'));
+            return;
+        }
+
+        const client = await getClient();
+        if (!client) {
+            console.error(chalk.red('✗ Please login first: repochief auth login'));
+            return;
+        }
+
+        const { org, workspace } = this.getContext();
+        
+        try {
+            const answers = await inquirer.prompt([
+                {
+                    type: 'confirm',
+                    name: 'confirm',
+                    message: 'Mark this intent as completed?',
+                    default: true
+                },
+                {
+                    type: 'input',
+                    name: 'learnings',
+                    message: 'Any learnings to record? (optional):',
+                    when: answers => answers.confirm
+                }
+            ]);
+
+            if (!answers.confirm) {
+                console.log(chalk.gray('Cancelled.'));
+                return;
+            }
+
+            await client.put(`/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}`, {
+                status: 'completed'
+            });
+
+            console.log(chalk.green('\n✓ Intent marked as completed!'));
+            console.log(chalk.cyan('🎉 Great work on completing this intent.'));
+
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to complete intent:'), error.message);
+        }
+    }
+
+    async cancelIntent(args) {
+        const intentId = args._[0];
+        if (!intentId) {
+            console.error(chalk.red('✗ Please provide an intent ID: repochief intent cancel <id>'));
+            return;
+        }
+
+        const client = await getClient();
+        if (!client) {
+            console.error(chalk.red('✗ Please login first: repochief auth login'));
+            return;
+        }
+
+        const { org, workspace } = this.getContext();
+        
+        try {
+            const answers = await inquirer.prompt([
+                {
+                    type: 'confirm',
+                    name: 'confirm',
+                    message: 'Are you sure you want to cancel this intent?',
+                    default: false
+                }
+            ]);
+
+            if (!answers.confirm) {
+                console.log(chalk.gray('Cancelled.'));
+                return;
+            }
+
+            await client.delete(`/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}`);
+            console.log(chalk.green('\n✓ Intent cancelled'));
+
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to cancel intent:'), error.message);
+        }
+    }
+
+    async manageTask(args) {
+        const intentId = args._[0];
+        if (!intentId) {
+            console.error(chalk.red('✗ Please provide an intent ID: repochief intent task <intent-id>'));
+            return;
+        }
+
+        const client = await getClient();
+        if (!client) {
+            console.error(chalk.red('✗ Please login first: repochief auth login'));
+            return;
+        }
+
+        const { org, workspace } = this.getContext();
+        
+        try {
+            const intentResponse = await client.get(`/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}`);
+            const intent = intentResponse.data.intent;
+
+            console.log(chalk.cyan(`\n📋 Task Management: ${intent.objective}\n`));
+
+            const action = await inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'action',
+                    message: 'What would you like to do?',
+                    choices: [
+                        { name: 'Add new task', value: 'add' },
+                        { name: 'Update task status', value: 'update' },
+                        { name: 'List all tasks', value: 'list' }
+                    ]
+                }
+            ]);
+
+            if (action.action === 'add') {
+                await this.addTask(client, org, workspace, intentId);
+            } else if (action.action === 'update') {
+                await this.updateTask(client, org, workspace, intentId, intent.tasks);
+            } else if (action.action === 'list') {
+                await this.listTasks(intent.tasks);
+            }
+
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to manage tasks:'), error.message);
+        }
+    }
+
+    async addTask(client, org, workspace, intentId) {
+        const answers = await inquirer.prompt([
+            {
+                type: 'input',
+                name: 'description',
+                message: 'Task description:',
+                validate: input => input.length > 0 || 'Task description is required'
+            },
+            {
+                type: 'list',
+                name: 'priority',
+                message: 'Priority:',
+                choices: ['critical', 'high', 'medium', 'low'],
+                default: 'medium'
+            },
+            {
+                type: 'list',
+                name: 'category',
+                message: 'Category:',
+                choices: ['backend', 'frontend', 'infrastructure', 'testing', 'documentation', 'general'],
+                default: 'general'
+            }
+        ]);
+
+        try {
+            await client.post(`/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}/tasks`, answers);
+            console.log(chalk.green('\n✓ Task added successfully'));
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to add task:'), error.message);
+        }
+    }
+
+    async updateTask(client, org, workspace, intentId, tasks) {
+        if (tasks.length === 0) {
+            console.log(chalk.gray('No tasks found. Add a task first.'));
+            return;
+        }
+
+        const taskChoice = await inquirer.prompt([
+            {
+                type: 'list',
+                name: 'taskId',
+                message: 'Select task to update:',
+                choices: tasks.map(task => ({
+                    name: `${task.description} (${task.status})`,
+                    value: task.id
+                }))
+            }
+        ]);
+
+        const statusChoice = await inquirer.prompt([
+            {
+                type: 'list',
+                name: 'status',
+                message: 'New status:',
+                choices: ['pending', 'in_progress', 'completed', 'cancelled']
+            }
+        ]);
+
+        try {
+            await client.put(`/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}/tasks/${taskChoice.taskId}`, {
+                status: statusChoice.status
+            });
+            console.log(chalk.green('\n✓ Task updated successfully'));
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to update task:'), error.message);
+        }
+    }
+
+    async listTasks(tasks) {
+        if (tasks.length === 0) {
+            console.log(chalk.gray('No tasks found.'));
+            return;
+        }
+
+        console.log(chalk.bold('Tasks:'));
+        tasks.forEach((task, index) => {
+            const statusIcon = task.status === 'completed' ? chalk.green('✓') : 
+                             task.status === 'in_progress' ? chalk.yellow('⏳') :
+                             task.status === 'cancelled' ? chalk.red('✗') : '○';
+            
+            console.log(`${index + 1}. ${statusIcon} ${task.description}`);
+            console.log(`   Status: ${task.status} | Priority: ${task.priority} | Category: ${task.category}`);
+        });
+    }
+
+    async showDashboard() {
+        const client = await getClient();
+        if (!client) {
+            console.error(chalk.red('✗ Please login first: repochief auth login'));
+            return;
+        }
+
+        const { org, workspace } = this.getContext();
+        if (!workspace) {
+            console.error(chalk.red('✗ Please select a workspace first: repochief workspace switch'));
+            return;
+        }
+
+        try {
+            const response = await client.get(`/api/v1/orgs/${org}/workspaces/${workspace}/intents/dashboard`);
+            const data = response.data;
+
+            console.log(chalk.cyan('\n📊 Intent Canvas Dashboard\n'));
+            
+            // Stats overview
+            console.log(chalk.bold('Overview:'));
+            console.log(`  Total Intents: ${data.stats.total}`);
+            console.log(`  Active: ${data.stats.pending + data.stats.in_progress} (${data.stats.pending} pending, ${data.stats.in_progress} in progress)`);
+            console.log(`  Completed: ${data.stats.completed}`);
+            
+            if (data.stats.overdue > 0) {
+                console.log(chalk.red(`  ⚠ Overdue: ${data.stats.overdue}`));
+            }
+            
+            console.log(`  Overall Progress: ${data.stats.overallProgress}%`);
+            console.log('');
+
+            // Task stats
+            console.log(chalk.bold('Task Statistics:'));
+            console.log(`  Total Tasks: ${data.stats.totalTasks}`);
+            console.log(`  Completed: ${data.stats.completedTasks}`);
+            console.log(`  In Progress: ${data.stats.inProgressTasks}`);
+            console.log(`  Pending: ${data.stats.pendingTasks}`);
+            
+            if (data.stats.activeBlockers > 0) {
+                console.log(chalk.red(`  Active Blockers: ${data.stats.activeBlockers}`));
+            }
+            console.log('');
+
+            // Recent activity
+            if (data.recentActivity.length > 0) {
+                console.log(chalk.bold('Recent Activity:'));
+                data.recentActivity.forEach(intent => {
+                    const statusColor = this.getStatusColor(intent.status);
+                    console.log(`  ${statusColor(intent.status)} ${intent.objective}`);
+                    console.log(`    Updated: ${moment(intent.updatedAt).fromNow()}`);
+                });
+                console.log('');
+            }
+
+            console.log(chalk.gray('Use "repochief intent list" to see all intents'));
+            console.log(chalk.gray('Create a new intent with "repochief intent create"'));
+
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to get dashboard:'), error.message);
+        }
+    }
+
+    // Helper methods
+    getProgressBar(progress, length = 10) {
+        const filled = Math.round((progress / 100) * length);
+        const empty = length - filled;
+        return chalk.green('█'.repeat(filled)) + chalk.gray('░'.repeat(empty));
+    }
+
+    getStatusColor(status) {
+        switch (status) {
+            case 'completed': return chalk.green;
+            case 'in_progress': return chalk.yellow;
+            case 'cancelled': return chalk.red;
+            default: return chalk.gray;
+        }
+    }
+
+    getPriorityColor(priority) {
+        switch (priority) {
+            case 'critical': return chalk.red.bold;
+            case 'high': return chalk.red;
+            case 'medium': return chalk.yellow;
+            case 'low': return chalk.gray;
+            default: return chalk.white;
+        }
+    }
+}
+
+module.exports = new IntentCommand();
