@@ -31,6 +31,7 @@ const workspaceCommand = require('../src/commands/workspace');
 const scheduleCommand = require('../src/commands/schedule');
 const deploymentCommand = require('../src/commands/deployment');
 const intentCommand = require('../src/commands/intent');
+const migrateCommand = require('../src/commands/migrate');
 
 // Prediction integration
 const { wrapWithPrediction } = require('../src/integrations/prediction');
@@ -132,6 +133,14 @@ program
   .description('Manage intents (Intent Canvas)')
   .action((subcommand, options) => {
     intentCommand.execute(subcommand, options);
+  });
+
+// Migrate command - import/export markdown
+program
+  .command('migrate [subcommand] [args...]')
+  .description('Migrate between markdown and database')
+  .action((subcommand, args, options) => {
+    migrateCommand.execute(subcommand, { _: args, ...options });
   });
 
 // Demo command - run the TODO API demo
