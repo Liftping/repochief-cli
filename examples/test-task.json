@@ -1,0 +1,17 @@
+{
+  "tasks": [
+    {
+      "type": "comprehension",
+      "objective": "Analyze TODO API requirements",
+      "context": ["Simple test"],
+      "maxTokens": 1000
+    }
+  ],
+  "agents": [
+    {
+      "name": "test-agent",
+      "model": "gpt-4o",
+      "capabilities": ["comprehension"]
+    }
+  ]
+}

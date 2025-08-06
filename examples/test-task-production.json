@@ -1,0 +1,13 @@
+[
+  {
+    "id": "production-test",
+    "type": "generation",
+    "objective": "Test RepoCHief production readiness",
+    "successCriteria": [
+      "Generate a simple welcome message",
+      "Demonstrate working AI integration",
+      "Show cost tracking capabilities"
+    ],
+    "maxTokens": 100
+  }
+]
