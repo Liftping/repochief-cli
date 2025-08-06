@@ -1,0 +1,270 @@
+{
+  "name": "RepoCHief Dogfooding - End-to-End Workflow",
+  "description": "Test RepoCHief by using it to develop RepoCHief features",
+  "budget": 5,
+  "mockMode": true,
+  "agents": [
+    {
+      "name": "workflow-tester",
+      "role": "qa",
+      "model": "gpt-4o-mini",
+      "capabilities": ["validation", "comprehension"],
+      "maxConcurrentTasks": 2
+    },
+    {
+      "name": "feature-developer",
+      "role": "developer",
+      "model": "gpt-4o",
+      "capabilities": ["generation", "validation"],
+      "maxConcurrentTasks": 3
+    },
+    {
+      "name": "integration-specialist",
+      "role": "architect",
+      "model": "claude-3.5-sonnet",
+      "capabilities": ["comprehension", "exploration"],
+      "maxConcurrentTasks": 2
+    }
+  ],
+  "tasks": [
+    {
+      "id": "test-cli-auth-flow",
+      "type": "validation",
+      "objective": "Test complete CLI authentication workflow from scratch",
+      "priority": "critical",
+      "context": [
+        "repochief auth login",
+        "repochief auth status",
+        "repochief auth logout",
+        "Token storage and retrieval",
+        "Cross-device authentication"
+      ],
+      "successCriteria": [
+        "User can authenticate via CLI",
+        "Token is securely stored",
+        "Token persists across sessions",
+        "Auth status shows correct user/org",
+        "Logout properly clears credentials"
+      ],
+      "maxTokens": 5000
+    },
+    {
+      "id": "test-dashboard-login",
+      "type": "validation",
+      "objective": "Verify dashboard login and multi-tenancy features",
+      "priority": "critical",
+      "dependencies": ["test-cli-auth-flow"],
+      "context": [
+        "https://beta.repochief.com login",
+        "Organization switching",
+        "Workspace selection",
+        "User permissions"
+      ],
+      "successCriteria": [
+        "Same credentials work for dashboard",
+        "User sees correct organizations",
+        "Can switch between workspaces",
+        "Permissions are enforced",
+        "Session management works"
+      ],
+      "maxTokens": 5000
+    },
+    {
+      "id": "test-device-connection",
+      "type": "validation",
+      "objective": "Connect local CLI to cloud dashboard",
+      "priority": "critical",
+      "dependencies": ["test-dashboard-login"],
+      "context": [
+        "Device registration",
+        "API key management",
+        "Cloud sync configuration",
+        "Real-time updates"
+      ],
+      "successCriteria": [
+        "CLI can register with cloud",
+        "Device appears in dashboard",
+        "API keys are properly managed",
+        "Two-way sync is established",
+        "Real-time updates work"
+      ],
+      "maxTokens": 5000
+    },
+    {
+      "id": "create-development-intent",
+      "type": "generation",
+      "objective": "Create an Intent in CLI and see it in dashboard",
+      "priority": "high",
+      "dependencies": ["test-device-connection"],
+      "context": [
+        "repochief intent create",
+        "Intent Canvas UI",
+        "Task breakdown",
+        "Progress tracking"
+      ],
+      "successCriteria": [
+        "Intent created via CLI",
+        "Appears in dashboard Intent Canvas",
+        "Tasks are properly structured",
+        "Progress updates in real-time",
+        "Can edit from both CLI and UI"
+      ],
+      "maxTokens": 6000
+    },
+    {
+      "id": "execute-repochief-task",
+      "type": "validation",
+      "objective": "Use RepoCHief to execute a real development task",
+      "priority": "high",
+      "dependencies": ["create-development-intent"],
+      "context": [
+        "Create task configuration",
+        "Run with repochief run",
+        "Monitor progress",
+        "View results in dashboard"
+      ],
+      "successCriteria": [
+        "Task executes successfully",
+        "Progress visible in dashboard",
+        "Cost tracking works",
+        "Results are saved",
+        "Cloud sync captures execution"
+      ],
+      "maxTokens": 7000
+    },
+    {
+      "id": "test-multi-device-sync",
+      "type": "validation",
+      "objective": "Verify tasks sync between multiple devices",
+      "priority": "high",
+      "dependencies": ["execute-repochief-task"],
+      "context": [
+        "Start task on device A",
+        "Continue on device B",
+        "View progress on dashboard",
+        "Handle conflicts"
+      ],
+      "successCriteria": [
+        "Task state syncs across devices",
+        "No data loss during handoff",
+        "Conflicts are handled gracefully",
+        "Progress is consistent",
+        "Results available everywhere"
+      ],
+      "maxTokens": 5000
+    },
+    {
+      "id": "validate-cost-tracking",
+      "type": "validation",
+      "objective": "Ensure cost tracking works end-to-end",
+      "priority": "high",
+      "dependencies": ["execute-repochief-task"],
+      "context": [
+        "Mock mode costs",
+        "Real API costs",
+        "Budget limits",
+        "Cost reports",
+        "Dashboard visualization"
+      ],
+      "successCriteria": [
+        "Costs tracked per task",
+        "Budget limits enforced",
+        "Reports are accurate",
+        "Dashboard shows spending",
+        "Alerts work for thresholds"
+      ],
+      "maxTokens": 4000
+    },
+    {
+      "id": "test-quality-gates",
+      "type": "validation",
+      "objective": "Verify quality gates run and report correctly",
+      "priority": "medium",
+      "dependencies": ["execute-repochief-task"],
+      "context": [
+        "Code generation tasks",
+        "Quality gate execution",
+        "Results reporting",
+        "Dashboard display"
+      ],
+      "successCriteria": [
+        "Quality gates execute",
+        "Results are captured",
+        "Failures block if configured",
+        "Reports show in dashboard",
+        "Can configure gate settings"
+      ],
+      "maxTokens": 4000
+    },
+    {
+      "id": "develop-feature-with-repochief",
+      "type": "generation",
+      "objective": "Actually develop a new RepoCHief feature using RepoCHief",
+      "priority": "critical",
+      "dependencies": ["create-development-intent"],
+      "context": [
+        "Pick a small feature to implement",
+        "Create Intent and tasks",
+        "Execute with RepoCHief",
+        "Track progress",
+        "Complete implementation"
+      ],
+      "successCriteria": [
+        "Feature is fully implemented",
+        "All done through RepoCHief",
+        "Progress tracked in Intent Canvas",
+        "Code quality gates pass",
+        "Feature works as expected"
+      ],
+      "maxTokens": 10000
+    },
+    {
+      "id": "document-dogfooding-results",
+      "type": "generation",
+      "objective": "Document what works and what needs fixing",
+      "priority": "high",
+      "dependencies": ["develop-feature-with-repochief"],
+      "context": [
+        "Working features",
+        "Broken workflows",
+        "Missing capabilities",
+        "User experience issues",
+        "Integration gaps"
+      ],
+      "successCriteria": [
+        "Complete workflow documentation",
+        "List of working features",
+        "List of bugs found",
+        "Priority fixes identified",
+        "Improvement recommendations"
+      ],
+      "maxTokens": 8000
+    }
+  ],
+  "workflowValidation": {
+    "criticalPath": [
+      "test-cli-auth-flow",
+      "test-dashboard-login",
+      "test-device-connection",
+      "create-development-intent",
+      "execute-repochief-task"
+    ],
+    "successMetrics": {
+      "authenticationWorks": false,
+      "dashboardAccessible": false,
+      "deviceSyncWorks": false,
+      "intentCreationWorks": false,
+      "taskExecutionWorks": false,
+      "costTrackingWorks": false,
+      "qualityGatesWork": false,
+      "multiDeviceSyncWorks": false
+    }
+  },
+  "outputConfig": {
+    "saveResults": true,
+    "outputDir": "./repochief-dogfooding-output",
+    "generateReport": true,
+    "trackProgress": true,
+    "createBugReports": true
+  }
+}
