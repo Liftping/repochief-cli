@@ -21,7 +21,11 @@ class IntentCommand extends BaseCommand {
             complete: this.completeIntent.bind(this),
             cancel: this.cancelIntent.bind(this),
             task: this.manageTask.bind(this),
-            dashboard: this.showDashboard.bind(this)
+            dashboard: this.showDashboard.bind(this),
+            files: this.manageFiles.bind(this),
+            'add-file': this.addFile.bind(this),
+            'list-files': this.listFiles.bind(this),
+            'remove-file': this.removeFile.bind(this)
         };
     }
 
@@ -37,6 +41,12 @@ class IntentCommand extends BaseCommand {
             console.log('  repochief intent cancel <id>          - Cancel intent');
             console.log('  repochief intent task <intent-id>     - Manage intent tasks');
             console.log('  repochief intent dashboard            - Show intent dashboard');
+            console.log('');
+            console.log(chalk.cyan('File tracking commands:'));
+            console.log('  repochief intent files <intent-id>           - Manage intent files');
+            console.log('  repochief intent add-file <intent-id> <path>  - Add file to intent');
+            console.log('  repochief intent list-files <intent-id>       - List tracked files');
+            console.log('  repochief intent remove-file <intent-id> <path> - Remove file from tracking');
             console.log('');
             console.log(chalk.gray('The Intent Canvas helps track strategic objectives'));
             console.log(chalk.gray('from vision to implementation, solving the bootstrap problem.'));
@@ -857,6 +867,302 @@ class IntentCommand extends BaseCommand {
             case 'medium': return chalk.yellow;
             case 'low': return chalk.gray;
             default: return chalk.white;
+        }
+    }
+
+    // File management methods
+    async manageFiles(args) {
+        const intentId = args._[0];
+        if (!intentId) {
+            console.error(chalk.red('✗ Please provide an intent ID: repochief intent files <intent-id>'));
+            return;
+        }
+
+        const client = await getClient();
+        if (!client) {
+            console.error(chalk.red('✗ Please login first: repochief auth login'));
+            return;
+        }
+
+        const { org, workspace } = this.getContext();
+        
+        try {
+            const intentResponse = await client.get(`/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}`);
+            const intent = intentResponse.data.intent;
+            
+            console.log(chalk.cyan(`\n📁 File Management: ${intent.objective}\n`));
+            
+            const action = await inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'action',
+                    message: 'What would you like to do?',
+                    choices: [
+                        { name: 'Add files to tracking', value: 'add' },
+                        { name: 'List all tracked files', value: 'list' },
+                        { name: 'Remove file from tracking', value: 'remove' },
+                        { name: 'Show file statistics', value: 'stats' }
+                    ]
+                }
+            ]);
+
+            if (action.action === 'add') {
+                await this.addFileInteractive(client, org, workspace, intentId);
+            } else if (action.action === 'list') {
+                await this.listFiles({ _: [intentId] });
+            } else if (action.action === 'remove') {
+                await this.removeFileInteractive(client, org, workspace, intentId, intent.files);
+            } else if (action.action === 'stats') {
+                await this.showFileStats(intent.files);
+            }
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to manage files:'), error.message);
+        }
+    }
+
+    async addFile(args) {
+        const intentId = args._[0];
+        const filePath = args._[1];
+        
+        if (!intentId || !filePath) {
+            console.error(chalk.red('✗ Usage: repochief intent add-file <intent-id> <file-path>'));
+            return;
+        }
+
+        const client = await getClient();
+        if (!client) {
+            console.error(chalk.red('✗ Please login first: repochief auth login'));
+            return;
+        }
+
+        const { org, workspace } = this.getContext();
+        const operation = args.operation || 'created';
+        
+        try {
+            const response = await client.post(
+                `/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}/files`,
+                {
+                    files: [{
+                        path: filePath,
+                        operation: operation,
+                        metadata: args.metadata ? JSON.parse(args.metadata) : {}
+                    }]
+                }
+            );
+            
+            console.log(chalk.green('✓ File added to tracking'));
+            console.log(`  Intent: ${intentId}`);
+            console.log(`  File: ${filePath}`);
+            console.log(`  Operation: ${operation}`);
+            console.log(`  Total files tracked: ${response.data.files.metadata.totalFiles}`);
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to add file:'), error.message);
+        }
+    }
+
+    async listFiles(args) {
+        const intentId = args._[0];
+        if (!intentId) {
+            console.error(chalk.red('✗ Please provide an intent ID: repochief intent list-files <intent-id>'));
+            return;
+        }
+
+        const client = await getClient();
+        if (!client) {
+            console.error(chalk.red('✗ Please login first: repochief auth login'));
+            return;
+        }
+
+        const { org, workspace } = this.getContext();
+        const operation = args.operation;
+        
+        try {
+            let url = `/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}/files`;
+            if (operation) {
+                url += `?operation=${operation}`;
+            }
+            
+            const response = await client.get(url);
+            const data = response.data;
+            
+            console.log(chalk.cyan(`\n📁 Files tracked by intent: ${data.objective}\n`));
+            
+            if (operation) {
+                // Single operation view
+                console.log(chalk.bold(`${operation.charAt(0).toUpperCase() + operation.slice(1)} files (${data.count}):`));
+                if (data.files.length === 0) {
+                    console.log(chalk.gray('  No files'));
+                } else {
+                    data.files.forEach(file => {
+                        console.log(`  📄 ${file}`);
+                    });
+                }
+            } else {
+                // All files view
+                if (data.files.created.length > 0) {
+                    console.log(chalk.bold(`Created files (${data.files.created.length}):`));
+                    data.files.created.forEach(file => {
+                        console.log(`  ✨ ${chalk.green(file)}`);
+                    });
+                    console.log('');
+                }
+                
+                if (data.files.modified.length > 0) {
+                    console.log(chalk.bold(`Modified files (${data.files.modified.length}):`));
+                    data.files.modified.forEach(file => {
+                        console.log(`  📝 ${chalk.yellow(file)}`);
+                    });
+                    console.log('');
+                }
+                
+                if (data.files.deleted.length > 0) {
+                    console.log(chalk.bold(`Deleted files (${data.files.deleted.length}):`));
+                    data.files.deleted.forEach(file => {
+                        console.log(`  🗑️  ${chalk.red(file)}`);
+                    });
+                    console.log('');
+                }
+                
+                console.log(chalk.gray(`Total files tracked: ${data.files.total}`));
+                if (data.metadata.lastUpdated) {
+                    console.log(chalk.gray(`Last updated: ${moment(data.metadata.lastUpdated).fromNow()}`));
+                }
+            }
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to list files:'), error.message);
+        }
+    }
+
+    async removeFile(args) {
+        const intentId = args._[0];
+        const filePath = args._[1];
+        
+        if (!intentId || !filePath) {
+            console.error(chalk.red('✗ Usage: repochief intent remove-file <intent-id> <file-path>'));
+            return;
+        }
+
+        const client = await getClient();
+        if (!client) {
+            console.error(chalk.red('✗ Please login first: repochief auth login'));
+            return;
+        }
+
+        const { org, workspace } = this.getContext();
+        
+        try {
+            const response = await client.delete(
+                `/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}/files`,
+                { data: { path: filePath } }
+            );
+            
+            console.log(chalk.green('✓ File removed from tracking'));
+            console.log(`  Intent: ${intentId}`);
+            console.log(`  File: ${filePath}`);
+            console.log(`  Remaining files: ${response.data.files.metadata.totalFiles}`);
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to remove file:'), error.message);
+        }
+    }
+
+    async addFileInteractive(client, org, workspace, intentId) {
+        const answers = await inquirer.prompt([
+            {
+                type: 'input',
+                name: 'paths',
+                message: 'Enter file paths (comma-separated):',
+                validate: input => input.trim() ? true : 'Please enter at least one file path'
+            },
+            {
+                type: 'list',
+                name: 'operation',
+                message: 'Operation type:',
+                choices: ['created', 'modified', 'deleted'],
+                default: 'created'
+            }
+        ]);
+
+        const files = answers.paths.split(',').map(path => ({
+            path: path.trim(),
+            operation: answers.operation
+        }));
+
+        try {
+            const response = await client.post(
+                `/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}/files`,
+                { files }
+            );
+            
+            console.log(chalk.green(`✓ Added ${files.length} file(s) to tracking`));
+            console.log(`  Total files now: ${response.data.files.metadata.totalFiles}`);
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to add files:'), error.message);
+        }
+    }
+
+    async removeFileInteractive(client, org, workspace, intentId, files) {
+        const allFiles = [
+            ...files.created.map(f => ({ path: f, type: 'created' })),
+            ...files.modified.map(f => ({ path: f, type: 'modified' })),
+            ...files.deleted.map(f => ({ path: f, type: 'deleted' }))
+        ];
+
+        if (allFiles.length === 0) {
+            console.log(chalk.gray('No files tracked by this intent'));
+            return;
+        }
+
+        const answer = await inquirer.prompt([
+            {
+                type: 'list',
+                name: 'file',
+                message: 'Select file to remove:',
+                choices: allFiles.map(f => ({
+                    name: `[${f.type}] ${f.path}`,
+                    value: f.path
+                }))
+            }
+        ]);
+
+        try {
+            await client.delete(
+                `/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}/files`,
+                { data: { path: answer.file } }
+            );
+            
+            console.log(chalk.green('✓ File removed from tracking'));
+        } catch (error) {
+            console.error(chalk.red('✗ Failed to remove file:'), error.message);
+        }
+    }
+
+    async showFileStats(files) {
+        console.log(chalk.cyan('\n📊 File Statistics:\n'));
+        
+        const stats = {
+            created: files.created?.length || 0,
+            modified: files.modified?.length || 0,
+            deleted: files.deleted?.length || 0,
+            total: (files.created?.length || 0) + (files.modified?.length || 0) + (files.deleted?.length || 0)
+        };
+
+        const table = new Table({
+            head: [chalk.cyan('Operation'), chalk.cyan('Count'), chalk.cyan('Percentage')],
+            colWidths: [15, 10, 15]
+        });
+
+        table.push(
+            ['Created', chalk.green(stats.created), `${Math.round((stats.created / stats.total) * 100)}%`],
+            ['Modified', chalk.yellow(stats.modified), `${Math.round((stats.modified / stats.total) * 100)}%`],
+            ['Deleted', chalk.red(stats.deleted), `${Math.round((stats.deleted / stats.total) * 100)}%`],
+            ['─────────', '─────', '─────────'],
+            ['Total', chalk.bold(stats.total), '100%']
+        );
+
+        console.log(table.toString());
+
+        if (files.metadata?.lastUpdated) {
+            console.log(chalk.gray(`\nLast updated: ${moment(files.metadata.lastUpdated).fromNow()}`));
         }
     }
 }
