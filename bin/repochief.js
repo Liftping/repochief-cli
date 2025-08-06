@@ -26,6 +26,9 @@ const statusCommand = require('../src/commands/status');
 const authCommand = require('../src/commands/auth');
 const doctorCommand = require('../src/commands/doctor');
 const predictCommand = require('../src/commands/predict');
+const orgCommand = require('../src/commands/org');
+const workspaceCommand = require('../src/commands/workspace');
+const scheduleCommand = require('../src/commands/schedule');
 
 // Prediction integration
 const { wrapWithPrediction } = require('../src/integrations/prediction');
@@ -93,6 +96,31 @@ program
 // Auth command - manage authentication
 program.addCommand(authCommand());
 
+// Organization command - manage organizations
+program
+  .command('org [subcommand]')
+  .description('Manage organizations')
+  .action((subcommand, options) => {
+    orgCommand.execute(subcommand, options);
+  });
+
+// Workspace command - manage workspaces
+program
+  .command('workspace [subcommand]')
+  .alias('ws')
+  .description('Manage workspaces')
+  .action((subcommand, options) => {
+    workspaceCommand.execute(subcommand, options);
+  });
+
+// Schedule command - manage scheduled tasks
+program
+  .command('schedule [subcommand]')
+  .description('Manage scheduled tasks')
+  .action((subcommand, options) => {
+    scheduleCommand.execute(subcommand, options);
+  });
+
 // Demo command - run the TODO API demo
 program
   .command('demo')
@@ -145,6 +173,9 @@ program
         message: 'What would you like to do?',
         choices: [
           { name: '🔐 Authenticate with cloud', value: 'auth' },
+          { name: '🏢 Manage organizations', value: 'org' },
+          { name: '📁 Manage workspaces', value: 'workspace' },
+          { name: '⏰ Manage scheduled tasks', value: 'schedule' },
           { name: '🚀 Run TODO API demo', value: 'demo' },
           { name: '📄 Initialize new project', value: 'init' },
           { name: '🤖 Manage agent profiles', value: 'agents' },
