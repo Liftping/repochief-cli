@@ -29,6 +29,7 @@ const predictCommand = require('../src/commands/predict');
 const orgCommand = require('../src/commands/org');
 const workspaceCommand = require('../src/commands/workspace');
 const scheduleCommand = require('../src/commands/schedule');
+const deploymentCommand = require('../src/commands/deployment');
 
 // Prediction integration
 const { wrapWithPrediction } = require('../src/integrations/prediction');
@@ -120,6 +121,9 @@ program
   .action((subcommand, options) => {
     scheduleCommand.execute(subcommand, options);
   });
+
+// Deployment command - monitor deployments
+program.addCommand(deploymentCommand);
 
 // Demo command - run the TODO API demo
 program
