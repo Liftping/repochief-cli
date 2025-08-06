@@ -7,8 +7,7 @@ const chalk = require('chalk');
 const path = require('path');
 const fs = require('fs').promises;
 const inquirer = require('inquirer');
-const { MigrationManager } = require('../../../repochief-core/src/migration');
-const CloudDatabase = require('../../../repochief-cloud-api/src/db/sqlite');
+const { MigrationManager } = require('@liftping/repochief-core/src/migration');
 
 class MigrateCommand {
   constructor() {
@@ -45,30 +44,10 @@ class MigrateCommand {
   }
 
   async initDatabase() {
-    // Try to use cloud database first
-    try {
-      const apiPath = path.join(__dirname, '../../../repochief-cloud-api');
-      const dbPath = path.join(apiPath, 'data', 'repochief.db');
-      
-      // Check if database exists
-      await fs.access(dbPath);
-      
-      this.db = new CloudDatabase({ path: dbPath });
-      await this.db.initialize();
-      
-      this.migrationManager = new MigrationManager(this.db.db, {
-        backupDir: path.join(process.cwd(), '.repochief', 'backups'),
-        generator: {
-          outputDir: path.join(process.cwd(), 'docs', 'generated')
-        }
-      });
-      
-      console.log(chalk.green('✓ Connected to database'));
-    } catch (error) {
-      console.error(chalk.red('✗ Failed to connect to database:'), error.message);
-      console.log(chalk.yellow('💡 Make sure the cloud API is initialized'));
-      process.exit(1);
-    }
+    // Migration command requires local development setup
+    console.log(chalk.yellow('ℹ Migration command is only available in development setup'));
+    console.log(chalk.gray('This command requires repochief-cloud-api to be installed locally'));
+    process.exit(0);
   }
 
   showHelp() {

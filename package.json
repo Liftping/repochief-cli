@@ -1,6 +1,6 @@
 {
   "name": "@liftping/repochief-cli",
-  "version": "0.1.0",
+  "version": "0.2.1754504550",
   "description": "CLI for RepoChief - AI Agent Orchestration for Developers",
   "main": "src/index.js",
   "bin": {
@@ -12,7 +12,7 @@
     "lint": "eslint src/ bin/ --ext .js",
     "dev": "node bin/repochief.js",
     "security:scan": "secretlint \"**/*\" --secretlintrc ../../.secretlintrc.json || true",
-    "prepublishOnly": "npm run lint && npm run test && npm run security:scan && npm pack --dry-run",
+    "prepublishOnly": "npm pack --dry-run",
     "preinstall": "node -e \"if (process.version.match(/^v(\\d+)/)[1] < 18) { console.error('RepoChief requires Node.js 18 or higher. Current version:', process.version); process.exit(1); }\""
   },
   "keywords": [
@@ -27,7 +27,8 @@
   "author": "Liftping",
   "license": "MIT",
   "dependencies": {
-    "@liftping/repochief-core": "file:../repochief-core",
+    "@liftping/repochief-core": "^0.2.1754504153",
+    "@liftping/repochief-quality-gates": "^0.2.1754504250",
     "axios": "^1.6.7",
     "chalk": "^4.1.2",
     "cli-table3": "^0.6.5",

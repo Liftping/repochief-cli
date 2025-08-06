@@ -27,3 +27,7 @@ Thumbs.db
 # Coverage
 coverage/
 .nyc_output/
+
+# Output directories
+output/
+.repochief/artifacts/

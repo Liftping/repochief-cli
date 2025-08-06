@@ -153,32 +153,17 @@ program
   .action(async (options) => {
     console.log(chalk.yellow('\n🚀 Starting TODO API Demo...\n'));
     
-    // Load and run the demo
-    try {
-      const demoPath = path.join(__dirname, '../../repochief-core/demo.js');
-      
-      // Set environment for demo
-      if (options.mock) {
-        process.env.MOCK_MODE = 'true';
-        console.log(chalk.gray('Running in mock mode - no API costs\n'));
-      }
-      
-      if (options.budget) {
-        process.env.DEMO_BUDGET = options.budget;
-      }
-      
-      // Check if demo exists
-      if (!fs.existsSync(demoPath)) {
-        throw new Error('Demo file not found. Please ensure repochief-core is installed.');
-      }
-      
-      // Run the demo
-      require(demoPath);
-    } catch (error) {
-      console.error(chalk.red(`\n❌ Demo failed: ${error.message}\n`));
-      console.log(chalk.yellow('Tip: Run "npm install" in packages/repochief-core first\n'));
-      process.exit(1);
-    }
+    // Demo functionality for NPM package
+    console.log(chalk.blue('\n📦 NPM Package Demo:\n'));
+    console.log(chalk.green('✅ RepoCHief is installed and ready to use!'));
+    console.log('');
+    console.log(chalk.cyan('Get started with:'));
+    console.log('  repochief init my-project');
+    console.log('  cd my-project');
+    console.log('  repochief config --api-keys  # Configure API keys');
+    console.log('  repochief run tasks/simple-generation.json');
+    console.log('');
+    console.log(chalk.yellow('💡 For full demos, see: https://github.com/liftping/repochief-demo-todo'));
   });
 
 // Interactive mode
