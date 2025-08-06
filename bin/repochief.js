@@ -32,6 +32,7 @@ const scheduleCommand = require('../src/commands/schedule');
 const deploymentCommand = require('../src/commands/deployment');
 const intentCommand = require('../src/commands/intent');
 const migrateCommand = require('../src/commands/migrate');
+const configCommand = require('../src/commands/config');
 
 // Prediction integration
 const { wrapWithPrediction } = require('../src/integrations/prediction');
@@ -226,39 +227,7 @@ program
   .option('-g, --get <key>', 'Get a configuration value')
   .option('-l, --list', 'List all configuration')
   .option('--api-keys', 'Configure API keys interactively')
-  .action(async (options) => {
-    if (options.apiKeys) {
-      const inquirer = require('inquirer');
-      console.log(chalk.yellow('\n🔐 API Key Configuration\n'));
-      
-      const answers = await inquirer.prompt([
-        {
-          type: 'list',
-          name: 'provider',
-          message: 'Which API key would you like to configure?',
-          choices: ['OpenAI', 'Anthropic', 'Google AI', 'All', 'Cancel']
-        }
-      ]);
-      
-      if (answers.provider !== 'Cancel') {
-        console.log(chalk.gray('\nAdd the following to your .env file:'));
-        
-        if (answers.provider === 'OpenAI' || answers.provider === 'All') {
-          console.log('OPENAI_API_KEY=your-openai-key-here');
-        }
-        if (answers.provider === 'Anthropic' || answers.provider === 'All') {
-          console.log('ANTHROPIC_API_KEY=your-anthropic-key-here');
-        }
-        if (answers.provider === 'Google AI' || answers.provider === 'All') {
-          console.log('GOOGLE_API_KEY=your-google-key-here');
-        }
-        
-        console.log(chalk.gray('\nFor more information, see: https://github.com/liftping/repochief#api-keys\n'));
-      }
-    } else {
-      console.log(chalk.yellow('Configuration management coming soon!\n'));
-    }
-  });
+  .action(configCommand.execute.bind(configCommand));
 
 // Doctor command - system diagnostics
 program

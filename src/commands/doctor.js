@@ -5,6 +5,7 @@ const DependencyService = require('../utils/dependency-service');
 const { checkAuthStatus } = require('../utils/api-client');
 const os = require('os');
 const { version: cliVersion } = require('../../package.json');
+const ConfigManager = require('@liftping/repochief-core/src/config/ConfigManager');
 
 async function doctor(options = {}) {
   console.log(chalk.bold.cyan('\n🩺 RepoChief Doctor\n'));
@@ -94,7 +95,7 @@ async function doctor(options = {}) {
   // Environment checks
   console.log(chalk.bold('\nEnvironment:'));
   const envChecks = {
-    'API Keys': checkApiKeys(),
+    'API Keys': await checkApiKeys(),
     'Config Directory': checkConfigDir(),
     'Cloud API': process.env.REPOCHIEF_API_URL || 'https://api.repochief.com (default)'
   };
@@ -159,17 +160,35 @@ function displayCheckResults(checks) {
   }
 }
 
-function checkApiKeys() {
-  const hasOpenAI = !!process.env.OPENAI_API_KEY;
-  const hasAnthropic = !!process.env.ANTHROPIC_API_KEY;
-  
-  if (hasOpenAI && hasAnthropic) {
-    return { status: 'ok', message: 'Both OpenAI and Anthropic configured' };
-  } else if (hasOpenAI || hasAnthropic) {
-    const configured = hasOpenAI ? 'OpenAI' : 'Anthropic';
-    return { status: 'ok', message: `${configured} configured` };
-  } else {
-    return { status: 'warning', message: 'No AI API keys configured' };
+async function checkApiKeys() {
+  try {
+    const configManager = new ConfigManager();
+    await configManager.initialize();
+    
+    const apiKeys = await configManager.getAPIKeys();
+    const providers = Object.keys(apiKeys).filter(key => apiKeys[key]);
+    
+    if (providers.length === 0) {
+      return { 
+        status: 'warning', 
+        message: 'No AI API keys configured\n    Run: repochief config --api-keys' 
+      };
+    } else if (providers.length === 1) {
+      return { 
+        status: 'ok', 
+        message: `${providers[0]} configured via ${apiKeys[providers[0]].startsWith('sk-') ? 'config file' : 'environment'}` 
+      };
+    } else {
+      return { 
+        status: 'ok', 
+        message: `${providers.length} providers configured (${providers.join(', ')})` 
+      };
+    }
+  } catch (error) {
+    return { 
+      status: 'warning', 
+      message: `Configuration error: ${error.message}` 
+    };
   }
 }
 
