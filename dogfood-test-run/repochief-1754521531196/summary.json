@@ -1,0 +1,81 @@
+{
+  "session": "repochief-1754521531196",
+  "timestamp": "2025-08-06T23:05:47.374Z",
+  "tasks": [
+    {
+      "taskId": "test-cli-auth-flow",
+      "status": "completed",
+      "tokensUsed": 380,
+      "cost": 0.0038000000000000004,
+      "timestamp": "2025-08-06T23:05:33.351Z"
+    },
+    {
+      "taskId": "test-dashboard-login",
+      "status": "completed",
+      "tokensUsed": 380,
+      "cost": 0.0038000000000000004,
+      "timestamp": "2025-08-06T23:05:35.355Z"
+    },
+    {
+      "taskId": "test-device-connection",
+      "status": "completed",
+      "tokensUsed": 380,
+      "cost": 0.0038000000000000004,
+      "timestamp": "2025-08-06T23:05:37.357Z"
+    },
+    {
+      "taskId": "create-development-intent",
+      "status": "completed",
+      "tokensUsed": 100,
+      "cost": 0.001,
+      "timestamp": "2025-08-06T23:05:39.360Z"
+    },
+    {
+      "taskId": "develop-feature-with-repochief",
+      "status": "completed",
+      "tokensUsed": 100,
+      "cost": 0.001,
+      "timestamp": "2025-08-06T23:05:41.363Z"
+    },
+    {
+      "taskId": "execute-repochief-task",
+      "status": "completed",
+      "tokensUsed": 380,
+      "cost": 0.0038000000000000004,
+      "timestamp": "2025-08-06T23:05:41.363Z"
+    },
+    {
+      "taskId": "document-dogfooding-results",
+      "status": "completed",
+      "tokensUsed": 100,
+      "cost": 0.001,
+      "timestamp": "2025-08-06T23:05:43.365Z"
+    },
+    {
+      "taskId": "test-multi-device-sync",
+      "status": "completed",
+      "tokensUsed": 380,
+      "cost": 0.0038000000000000004,
+      "timestamp": "2025-08-06T23:05:43.367Z"
+    },
+    {
+      "taskId": "validate-cost-tracking",
+      "status": "completed",
+      "tokensUsed": 380,
+      "cost": 0.0038000000000000004,
+      "timestamp": "2025-08-06T23:05:45.370Z"
+    },
+    {
+      "taskId": "test-quality-gates",
+      "status": "completed",
+      "tokensUsed": 380,
+      "cost": 0.0038000000000000004,
+      "timestamp": "2025-08-06T23:05:47.373Z"
+    }
+  ],
+  "totalTasks": 10,
+  "completedTasks": 10,
+  "failedTasks": 0,
+  "totalCost": 0.029600000000000008,
+  "totalTokens": 2960
+}

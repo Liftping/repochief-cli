@@ -1,0 +1,1 @@
+Mock response for generation: Document what works and what needs fixing

@@ -2,7 +2,7 @@ const axios = require('axios');
 const { getDeviceId, getToken, storeToken } = require('./device');
 
 // API configuration
-const API_BASE_URL = process.env.REPOCHIEF_API_URL || 'https://api.repochief.com/v1';
+const API_BASE_URL = process.env.REPOCHIEF_API_URL || 'https://api.repochief.com/api';
 const API_TIMEOUT = 30000; // 30 seconds
 
 /**

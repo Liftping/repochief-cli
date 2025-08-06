@@ -1,0 +1,11 @@
+{
+  "taskId": "create-development-intent",
+  "timestamp": "2025-08-06T23:05:39.360Z",
+  "status": "completed",
+  "output": "Mock response for generation: Create an Intent in CLI and see it in dashboard",
+  "tokensUsed": 100,
+  "cost": 0.001,
+  "duration": 2000,
+  "qualityScore": 0.95,
+  "qualityResults": null
+}

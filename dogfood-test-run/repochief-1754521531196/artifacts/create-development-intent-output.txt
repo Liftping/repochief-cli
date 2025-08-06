@@ -1,0 +1,1 @@
+Mock response for generation: Create an Intent in CLI and see it in dashboard

@@ -1,0 +1,21 @@
+
+RepoChief Execution Summary
+==========================
+
+Session: repochief-1754521531196
+Duration: 17.2s
+Mode: Mock
+
+Tasks:
+------
+Total: 10
+Successful: 10
+Failed: 0
+
+Cost:
+-----
+Total: $0.03
+Input tokens: 0
+Output tokens: 0
+
+Results saved to: /home/carlosleivacom/workspace/repochief-packages/repochief-cli/dogfood-test-run/results.json
