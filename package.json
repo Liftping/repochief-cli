@@ -27,6 +27,7 @@
   "author": "Liftping",
   "license": "MIT",
   "dependencies": {
+    "@clerk/backend": "^2.6.3",
     "@liftping/repochief-core": "^0.2.1754504153",
     "@liftping/repochief-quality-gates": "^0.2.1754504250",
     "axios": "^1.6.7",
