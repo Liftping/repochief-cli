@@ -1,7 +1,7 @@
 const { Command } = require('commander');
 const chalk = require('chalk');
 const ora = require('ora');
-const { getDeviceId, removeToken } = require('../../utils/device');
+const { getWorkspaceId, removeToken } = require('../../utils/workspace');
 const { APIClient } = require('../../utils/api-client');
 
 /**
@@ -12,7 +12,7 @@ function createLogoutCommand() {
   
   command
     .description('Log out from RepoChief cloud')
-    .option('--all-devices', 'Revoke access from all devices')
+    .option('--all-workspaces', 'Revoke access from all workspaces')
     .action(async (options) => {
       try {
         await handleLogout(options);
@@ -32,9 +32,9 @@ async function handleLogout(options) {
   const spinner = ora('Logging out...').start();
   
   try {
-    const deviceId = await getDeviceId();
+    const workspaceId = await getWorkspaceId();
     
-    if (!deviceId) {
+    if (!workspaceId) {
       spinner.info('Not logged in');
       return;
     }
@@ -42,16 +42,16 @@ async function handleLogout(options) {
     // Revoke tokens on server
     const client = new APIClient();
     
-    if (options.allDevices) {
+    if (options.allWorkspaces) {
       await client.revokeAllTokens();
-      spinner.succeed('Logged out from all devices');
+      spinner.succeed('Logged out from all workspaces');
     } else {
-      await client.revokeDeviceToken(deviceId);
+      await client.revokeWorkspaceToken(workspaceId);
       spinner.succeed('Logged out successfully');
     }
     
     // Remove local token
-    await removeToken(deviceId);
+    await removeToken(workspaceId);
     
     console.log(chalk.gray('Local credentials removed'));
     
@@ -60,9 +60,9 @@ async function handleLogout(options) {
     
     // Always try to remove local token even if API call fails
     try {
-      const deviceId = await getDeviceId();
-      if (deviceId) {
-        await removeToken(deviceId);
+      const workspaceId = await getWorkspaceId();
+      if (workspaceId) {
+        await removeToken(workspaceId);
         console.log(chalk.yellow('Note: Local credentials removed, but server logout may have failed'));
       }
     } catch (localError) {

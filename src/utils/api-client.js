@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { getDeviceId, getToken, storeToken } = require('./device');
+const { getWorkspaceId, getToken, storeToken } = require('./workspace');
 
 // API configuration
 const API_BASE_URL = process.env.REPOCHIEF_API_URL || 'https://api.repochief.com/api';
@@ -63,8 +63,8 @@ class APIClient {
   async getAuthToken() {
     if (this.token) return this.token;
     
-    const deviceId = await getDeviceId();
-    if (!deviceId) return null;
+    const workspaceId = await getWorkspaceId();
+    if (!workspaceId) return null;
     
     // Try to get access token from memory/cache
     if (this.accessToken && this.accessTokenExpiry > Date.now()) {
@@ -72,7 +72,7 @@ class APIClient {
     }
     
     // Get refresh token from storage
-    const refreshToken = await getToken(deviceId);
+    const refreshToken = await getToken(workspaceId);
     return refreshToken;
   }
   
@@ -80,10 +80,10 @@ class APIClient {
    * Handle token refresh
    */
   async handleTokenRefresh() {
-    const deviceId = await getDeviceId();
-    if (!deviceId) throw new Error('Not authenticated');
+    const workspaceId = await getWorkspaceId();
+    if (!workspaceId) throw new Error('Not authenticated');
     
-    const refreshToken = await getToken(deviceId);
+    const refreshToken = await getToken(workspaceId);
     if (!refreshToken) throw new Error('No refresh token available');
     
     // Import here to avoid circular dependency
@@ -94,7 +94,7 @@ class APIClient {
     
     // Store new refresh token if rotated
     if (tokens.refresh_token && tokens.refresh_token !== refreshToken) {
-      await storeToken(deviceId, tokens.refresh_token);
+      await storeToken(workspaceId, tokens.refresh_token);
     }
     
     // Cache access token in memory
@@ -145,8 +145,8 @@ class APIClient {
     return await this.get('/user/status');
   }
   
-  async revokeDeviceToken(deviceId) {
-    return await this.post('/auth/revoke', { device_id: deviceId });
+  async revokeWorkspaceToken(workspaceId) {
+    return await this.post('/auth/revoke', { device_id: workspaceId });
   }
   
   async revokeAllTokens() {
@@ -161,12 +161,12 @@ class APIClient {
     return await this.post('/devices', deviceInfo);
   }
   
-  async updateDevice(deviceId, updates) {
-    return await this.patch(`/devices/${deviceId}`, updates);
+  async updateDevice(workspaceId, updates) {
+    return await this.patch(`/devices/${workspaceId}`, updates);
   }
   
-  async deleteDevice(deviceId) {
-    return await this.delete(`/devices/${deviceId}`);
+  async deleteDevice(workspaceId) {
+    return await this.delete(`/devices/${workspaceId}`);
   }
   
   async syncPull(lastSyncAt = null) {
@@ -177,8 +177,8 @@ class APIClient {
     return await this.post('/sync/push', data);
   }
   
-  async getUsage(deviceId = null) {
-    const params = deviceId ? { device_id: deviceId } : {};
+  async getUsage(workspaceId = null) {
+    const params = workspaceId ? { device_id: workspaceId } : {};
     return await this.get('/usage', params);
   }
 }

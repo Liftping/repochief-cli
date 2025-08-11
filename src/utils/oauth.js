@@ -7,33 +7,33 @@ const POLL_INTERVAL = 5000; // 5 seconds
 const MAX_POLL_TIME = 300000; // 5 minutes
 
 /**
- * OAuth 2.0 Device Flow implementation
+ * OAuth 2.0 Workspace Flow implementation
  */
-async function deviceFlow() {
+async function workspaceFlow() {
   const client = new APIClient();
   
-  // Step 1: Request device code
-  const deviceCodeResponse = await requestDeviceCode(client);
+  // Step 1: Request workspace code
+  const workspaceCodeResponse = await requestWorkspaceCode(client);
   
   // Step 2: Return auth data with poll function
   return {
-    ...deviceCodeResponse,
-    pollForToken: () => pollForToken(client, deviceCodeResponse)
+    ...workspaceCodeResponse,
+    pollForToken: () => pollForToken(client, workspaceCodeResponse)
   };
 }
 
 /**
- * Request device code from authorization server
+ * Request workspace code from authorization server
  */
-async function requestDeviceCode(client) {
+async function requestWorkspaceCode(client) {
   try {
-    const response = await client.post('/auth/device/code', {
+    const response = await client.post('/auth/workspace/code', {
       client_id: CLIENT_ID,
       scope: SCOPES.join(' ')
     });
     
     return {
-      device_code: response.device_code,
+      workspace_code: response.workspace_code,
       user_code: response.user_code,
       verification_uri: response.verification_uri,
       verification_uri_complete: response.verification_uri_complete,
@@ -41,15 +41,15 @@ async function requestDeviceCode(client) {
       interval: response.interval || 5
     };
   } catch (error) {
-    throw new Error(`Failed to initiate device flow: ${error.message}`);
+    throw new Error(`Failed to initiate workspace flow: ${error.message}`);
   }
 }
 
 /**
  * Poll for token after user authorization
  */
-async function pollForToken(client, deviceCodeResponse) {
-  const { device_code, interval = 5, expires_in } = deviceCodeResponse;
+async function pollForToken(client, workspaceCodeResponse) {
+  const { workspace_code, interval = 5, expires_in } = workspaceCodeResponse;
   const pollInterval = interval * 1000; // Convert to milliseconds
   const expiresAt = Date.now() + (expires_in * 1000);
   
@@ -57,15 +57,15 @@ async function pollForToken(client, deviceCodeResponse) {
     const poll = async () => {
       // Check if code has expired
       if (Date.now() > expiresAt) {
-        reject(new Error('Device code expired. Please try again.'));
+        reject(new Error('Workspace code expired. Please try again.'));
         return;
       }
       
       try {
-        const response = await client.post('/auth/device/token', {
-          device_code,
+        const response = await client.post('/auth/workspace/token', {
+          workspace_code,
           client_id: CLIENT_ID,
-          grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
+          grant_type: 'urn:ietf:params:oauth:grant-type:workspace_code'
         });
         
         // Success! User has authorized
@@ -98,7 +98,7 @@ async function pollForToken(client, deviceCodeResponse) {
               break;
               
             case 'expired_token':
-              reject(new Error('Device code expired'));
+              reject(new Error('Workspace code expired'));
               break;
               
             default:
@@ -155,7 +155,7 @@ async function validatePAT(token) {
       valid: true,
       user: response.user,
       scopes: response.scopes,
-      device: response.device
+      workspace: response.workspace
     };
   } catch (error) {
     if (error.response?.status === 401) {
@@ -166,7 +166,7 @@ async function validatePAT(token) {
 }
 
 module.exports = {
-  deviceFlow,
+  workspaceFlow,
   refreshAccessToken,
   validatePAT
 };

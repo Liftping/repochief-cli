@@ -2,12 +2,12 @@ const { Command } = require('commander');
 const chalk = require('chalk');
 const open = require('open');
 const ora = require('ora');
-const { getOrCreateDeviceId, storeToken } = require('../../utils/device');
-const { deviceFlow } = require('../../utils/oauth');
+const { getOrCreateWorkspaceId, storeToken } = require('../../utils/workspace');
+const { workspaceFlow } = require('../../utils/oauth');
 const { APIClient } = require('../../utils/api-client');
 
 /**
- * Login command for OAuth device flow authentication
+ * Login command for OAuth workspace flow authentication
  */
 function createLoginCommand() {
   const command = new Command('login');
@@ -39,8 +39,8 @@ async function handleTokenAuth(token) {
   const spinner = ora('Validating token...').start();
   
   try {
-    // Get or create device ID
-    const deviceId = await getOrCreateDeviceId();
+    // Get or create workspace ID
+    const workspaceId = await getOrCreateWorkspaceId();
     
     // Validate token with API
     const client = new APIClient();
@@ -48,11 +48,11 @@ async function handleTokenAuth(token) {
     
     if (response.valid) {
       // Store token securely
-      await storeToken(deviceId, token);
+      await storeToken(workspaceId, token);
       
       spinner.succeed('Authentication successful!');
       console.log(chalk.green(`✓ Logged in as ${response.user.email}`));
-      console.log(chalk.gray(`  Device: ${deviceId}`));
+      console.log(chalk.gray(`  Workspace: ${workspaceId}`));
     } else {
       spinner.fail('Invalid token');
       throw new Error('The provided token is invalid or expired');
@@ -64,17 +64,17 @@ async function handleTokenAuth(token) {
 }
 
 /**
- * Handle OAuth device flow authentication
+ * Handle OAuth workspace flow authentication
  */
 async function handleOAuthFlow(options) {
   const spinner = ora('Initializing authentication...').start();
   
   try {
-    // Get or create device ID
-    const deviceId = await getOrCreateDeviceId();
+    // Get or create workspace ID
+    const workspaceId = await getOrCreateWorkspaceId();
     
-    // Start device flow
-    const authData = await deviceFlow();
+    // Start workspace flow
+    const authData = await workspaceFlow();
     
     spinner.stop();
     
@@ -101,11 +101,11 @@ async function handleOAuthFlow(options) {
     const tokens = await authData.pollForToken();
     
     // Store tokens securely
-    await storeToken(deviceId, tokens.refresh_token);
+    await storeToken(workspaceId, tokens.refresh_token);
     
     spinner.succeed('Authentication successful!');
     console.log(chalk.green(`✓ Logged in as ${tokens.user.email}`));
-    console.log(chalk.gray(`  Device: ${deviceId}`));
+    console.log(chalk.gray(`  Workspace: ${workspaceId}`));
     
     // Show next steps
     console.log('');

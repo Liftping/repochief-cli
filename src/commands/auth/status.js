@@ -1,7 +1,7 @@
 const { Command } = require('commander');
 const chalk = require('chalk');
 const ora = require('ora');
-const { getDeviceId, getDeviceInfo } = require('../../utils/device');
+const { getWorkspaceId, getWorkspaceInfo } = require('../../utils/workspace');
 const { APIClient } = require('../../utils/api-client');
 
 /**
@@ -32,9 +32,9 @@ async function handleStatus(options) {
   const spinner = ora('Checking status...').start();
   
   try {
-    const deviceId = await getDeviceId();
+    const workspaceId = await getWorkspaceId();
     
-    if (!deviceId) {
+    if (!workspaceId) {
       spinner.stop();
       console.log(chalk.yellow('⚠ Not authenticated'));
       console.log('');
@@ -43,7 +43,7 @@ async function handleStatus(options) {
     }
     
     // Get local device info
-    const deviceInfo = await getDeviceInfo();
+    const workspaceInfo = await getWorkspaceInfo();
     
     // Check API connection
     const client = new APIClient();
@@ -59,10 +59,10 @@ async function handleStatus(options) {
     console.log(`  Plan: ${status.user.plan || 'Free'}`);
     console.log('');
     
-    console.log(chalk.bold('Device:'));
-    console.log(`  ID: ${deviceInfo.deviceId}`);
-    console.log(`  Name: ${deviceInfo.deviceName}`);
-    console.log(`  Registered: ${new Date(deviceInfo.createdAt).toLocaleDateString()}`);
+    console.log(chalk.bold('Workspace:'));
+    console.log(`  ID: ${workspaceInfo.workspaceId}`);
+    console.log(`  Name: ${workspaceInfo.workspaceName}`);
+    console.log(`  Registered: ${new Date(workspaceInfo.createdAt).toLocaleDateString()}`);
     console.log('');
     
     console.log(chalk.bold('Sync Status:'));
@@ -77,10 +77,10 @@ async function handleStatus(options) {
       console.log(`  Storage: ${formatBytes(status.usage.storage || 0)}`);
       console.log('');
       
-      console.log(chalk.bold('Connected Devices:'));
-      for (const device of status.devices || []) {
-        const current = device.id === deviceId ? ' (current)' : '';
-        console.log(`  • ${device.name} - Last seen: ${new Date(device.lastSeenAt).toLocaleString()}${current}`);
+      console.log(chalk.bold('Connected Workspaces:'));
+      for (const device of status.workspaces || []) {
+        const current = workspace.id === workspaceId ? ' (current)' : '';
+        console.log(`  • ${workspace.name} - Last seen: ${new Date(workspace.lastSeenAt).toLocaleString()}${current}`);
       }
     }
     

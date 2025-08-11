@@ -20,7 +20,7 @@ function getKeytar() {
 
 // Configuration directory
 const CONFIG_DIR = path.join(os.homedir(), '.repochief');
-const DEVICE_FILE = path.join(CONFIG_DIR, 'device.json');
+const WORKSPACE_FILE = path.join(CONFIG_DIR, 'workspace.json');
 const SERVICE_NAME = 'repochief';
 
 /**
@@ -31,23 +31,23 @@ async function ensureConfigDir() {
 }
 
 /**
- * Get or create device ID
+ * Get or create workspace ID
  */
-async function getOrCreateDeviceId() {
+async function getOrCreateWorkspaceId() {
   await ensureConfigDir();
   
   try {
-    const data = await fs.readFile(DEVICE_FILE, 'utf8');
-    const device = JSON.parse(data);
-    return device.deviceId;
+    const data = await fs.readFile(WORKSPACE_FILE, 'utf8');
+    const workspace = JSON.parse(data);
+    return workspace.workspaceId;
   } catch (error) {
-    // Device file doesn't exist, create new device
-    const deviceId = `dev_${uuidv4().replace(/-/g, '')}`;
-    const deviceName = await promptForDeviceName();
+    // Workspace file doesn't exist, create new workspace
+    const workspaceId = `ws_${uuidv4().replace(/-/g, '')}`;
+    const workspaceName = await promptForWorkspaceName();
     
-    const deviceInfo = {
-      deviceId,
-      deviceName,
+    const workspaceInfo = {
+      workspaceId,
+      workspaceName,
       createdAt: new Date().toISOString(),
       metadata: {
         os: os.platform(),
@@ -57,30 +57,30 @@ async function getOrCreateDeviceId() {
       }
     };
     
-    await fs.writeFile(DEVICE_FILE, JSON.stringify(deviceInfo, null, 2));
-    return deviceId;
+    await fs.writeFile(WORKSPACE_FILE, JSON.stringify(workspaceInfo, null, 2));
+    return workspaceId;
   }
 }
 
 /**
- * Get device ID if exists
+ * Get workspace ID if exists
  */
-async function getDeviceId() {
+async function getWorkspaceId() {
   try {
-    const data = await fs.readFile(DEVICE_FILE, 'utf8');
-    const device = JSON.parse(data);
-    return device.deviceId;
+    const data = await fs.readFile(WORKSPACE_FILE, 'utf8');
+    const workspace = JSON.parse(data);
+    return workspace.workspaceId;
   } catch (error) {
     return null;
   }
 }
 
 /**
- * Get device info
+ * Get workspace info
  */
-async function getDeviceInfo() {
+async function getWorkspaceInfo() {
   try {
-    const data = await fs.readFile(DEVICE_FILE, 'utf8');
+    const data = await fs.readFile(WORKSPACE_FILE, 'utf8');
     return JSON.parse(data);
   } catch (error) {
     return null;
@@ -88,40 +88,40 @@ async function getDeviceInfo() {
 }
 
 /**
- * Prompt for device name
+ * Prompt for workspace name
  */
-async function promptForDeviceName() {
+async function promptForWorkspaceName() {
   const defaultName = `${os.hostname()} - ${os.platform()}`;
   
   const answers = await inquirer.prompt([
     {
       type: 'input',
-      name: 'deviceName',
-      message: 'Name this device:',
+      name: 'workspaceName',
+      message: 'Name this workspace:',
       default: defaultName,
       validate: (input) => {
         if (!input || input.trim().length === 0) {
-          return 'Device name cannot be empty';
+          return 'Workspace name cannot be empty';
         }
         if (input.length > 255) {
-          return 'Device name must be less than 255 characters';
+          return 'Workspace name must be less than 255 characters';
         }
         return true;
       }
     }
   ]);
   
-  return answers.deviceName.trim();
+  return answers.workspaceName.trim();
 }
 
 /**
  * Store token securely using OS keychain
  */
-async function storeToken(deviceId, token) {
+async function storeToken(workspaceId, token) {
   const keytarLib = getKeytar();
   if (keytarLib) {
     try {
-      await keytarLib.setPassword(SERVICE_NAME, deviceId, token);
+      await keytarLib.setPassword(SERVICE_NAME, workspaceId, token);
       return;
     } catch (error) {
       // Fallback to encrypted file storage if keychain fails
@@ -130,17 +130,17 @@ async function storeToken(deviceId, token) {
   }
   
   // Use fallback storage
-  await storeTokenFallback(deviceId, token);
+  await storeTokenFallback(workspaceId, token);
 }
 
 /**
  * Get token from secure storage
  */
-async function getToken(deviceId) {
+async function getToken(workspaceId) {
   const keytarLib = getKeytar();
   if (keytarLib) {
     try {
-      const token = await keytarLib.getPassword(SERVICE_NAME, deviceId);
+      const token = await keytarLib.getPassword(SERVICE_NAME, workspaceId);
       if (token) return token;
     } catch (error) {
       // Try fallback storage
@@ -148,30 +148,30 @@ async function getToken(deviceId) {
   }
   
   // Try fallback storage
-  return await getTokenFallback(deviceId);
+  return await getTokenFallback(workspaceId);
 }
 
 /**
  * Remove token from secure storage
  */
-async function removeToken(deviceId) {
+async function removeToken(workspaceId) {
   const keytarLib = getKeytar();
   if (keytarLib) {
     try {
-      await keytarLib.deletePassword(SERVICE_NAME, deviceId);
+      await keytarLib.deletePassword(SERVICE_NAME, workspaceId);
     } catch (error) {
       // Try fallback removal
     }
   }
   
   // Remove fallback storage
-  await removeTokenFallback(deviceId);
+  await removeTokenFallback(workspaceId);
 }
 
 /**
  * Fallback token storage (encrypted file)
  */
-async function storeTokenFallback(deviceId, token) {
+async function storeTokenFallback(workspaceId, token) {
   const tokenFile = path.join(CONFIG_DIR, '.tokens');
   let tokens = {};
   
@@ -185,7 +185,7 @@ async function storeTokenFallback(deviceId, token) {
   // Simple obfuscation (not secure, but better than plaintext)
   // In production, use proper encryption
   const obfuscated = Buffer.from(token).toString('base64');
-  tokens[deviceId] = obfuscated;
+  tokens[workspaceId] = obfuscated;
   
   await fs.writeFile(tokenFile, JSON.stringify(tokens), { mode: 0o600 });
 }
@@ -193,15 +193,15 @@ async function storeTokenFallback(deviceId, token) {
 /**
  * Get token from fallback storage
  */
-async function getTokenFallback(deviceId) {
+async function getTokenFallback(workspaceId) {
   try {
     const tokenFile = path.join(CONFIG_DIR, '.tokens');
     const data = await fs.readFile(tokenFile, 'utf8');
     const tokens = JSON.parse(data);
     
-    if (tokens[deviceId]) {
+    if (tokens[workspaceId]) {
       // Deobfuscate
-      return Buffer.from(tokens[deviceId], 'base64').toString();
+      return Buffer.from(tokens[workspaceId], 'base64').toString();
     }
   } catch (error) {
     // Token not found
@@ -213,13 +213,13 @@ async function getTokenFallback(deviceId) {
 /**
  * Remove token from fallback storage
  */
-async function removeTokenFallback(deviceId) {
+async function removeTokenFallback(workspaceId) {
   try {
     const tokenFile = path.join(CONFIG_DIR, '.tokens');
     const data = await fs.readFile(tokenFile, 'utf8');
     const tokens = JSON.parse(data);
     
-    delete tokens[deviceId];
+    delete tokens[workspaceId];
     
     if (Object.keys(tokens).length === 0) {
       // Remove file if no tokens left
@@ -233,31 +233,31 @@ async function removeTokenFallback(deviceId) {
 }
 
 /**
- * Update device metadata
+ * Update workspace metadata
  */
-async function updateDeviceMetadata(metadata) {
+async function updateWorkspaceMetadata(metadata) {
   try {
-    const deviceInfo = await getDeviceInfo();
-    if (!deviceInfo) return;
+    const workspaceInfo = await getWorkspaceInfo();
+    if (!workspaceInfo) return;
     
-    deviceInfo.metadata = {
-      ...deviceInfo.metadata,
+    workspaceInfo.metadata = {
+      ...workspaceInfo.metadata,
       ...metadata,
       lastUpdated: new Date().toISOString()
     };
     
-    await fs.writeFile(DEVICE_FILE, JSON.stringify(deviceInfo, null, 2));
+    await fs.writeFile(WORKSPACE_FILE, JSON.stringify(workspaceInfo, null, 2));
   } catch (error) {
     // Ignore metadata update errors
   }
 }
 
 module.exports = {
-  getOrCreateDeviceId,
-  getDeviceId,
-  getDeviceInfo,
+  getOrCreateWorkspaceId,
+  getWorkspaceId,
+  getWorkspaceInfo,
   storeToken,
   getToken,
   removeToken,
-  updateDeviceMetadata
+  updateWorkspaceMetadata
 };

@@ -17,7 +17,7 @@ module.exports = {
   
   // Export utilities for programmatic usage
   utils: {
-    device: require('./utils/device'),
+    workspace: require('./utils/workspace'),
     oauth: require('./utils/oauth'),
     APIClient: require('./utils/api-client').APIClient
   }
