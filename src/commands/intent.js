@@ -86,8 +86,7 @@ class IntentCommand extends BaseCommand {
             if (overdue) params.append('overdue', 'true');
             params.append('limit', limit);
             
-            const response = await client.get(`/api/v1/orgs/${org}/workspaces/${workspace}/intents?${params}`);
-            const intents = response.data.intents;
+            const intents = await client.getIntents();
 
             console.log(chalk.cyan('\n🎯 Intent Canvas:\n'));
             
@@ -110,22 +109,19 @@ class IntentCommand extends BaseCommand {
             });
 
             intents.forEach(intent => {
-                const progressBar = this.getProgressBar(intent.stats.progress);
+                const progressBar = this.getProgressBar(50); // Default progress since we don't have stats yet
                 const statusColor = this.getStatusColor(intent.status);
-                const priorityColor = this.getPriorityColor(intent.metadata.priority);
+                const priorityColor = chalk.yellow; // Default color
                 
-                const targetDate = intent.targetCompletion ? 
-                    moment(intent.targetCompletion).format('MMM DD') : 'None';
+                const targetDate = moment(intent.created_at).format('MMM DD');
                 
-                const overdueFlag = intent.stats.isOverdue ? chalk.red(' ⚠') : '';
-
                 table.push([
                     intent.objective.length > 37 ? intent.objective.substring(0, 34) + '...' : intent.objective,
                     statusColor(intent.status),
                     progressBar,
-                    `${intent.stats.completedTasks}/${intent.stats.totalTasks}`,
-                    priorityColor(intent.metadata.priority),
-                    targetDate + overdueFlag
+                    '0/0', // Default task count
+                    priorityColor('medium'),
+                    targetDate
                 ]);
             });
 
@@ -133,14 +129,10 @@ class IntentCommand extends BaseCommand {
             console.log('');
             
             // Summary
-            const activeCount = intents.filter(i => ['pending', 'in_progress'].includes(i.status)).length;
+            const activeCount = intents.filter(i => ['draft', 'active'].includes(i.status)).length;
             const completedCount = intents.filter(i => i.status === 'completed').length;
-            const overdueCount = intents.filter(i => i.stats.isOverdue).length;
             
             console.log(chalk.gray(`Total: ${intents.length} intents (${activeCount} active, ${completedCount} completed)`));
-            if (overdueCount > 0) {
-                console.log(chalk.red(`⚠ ${overdueCount} intents are overdue`));
-            }
             console.log(chalk.gray('Use "repochief intent show <id>" for details, "repochief intent dashboard" for overview'));
 
         } catch (error) {
@@ -278,38 +270,31 @@ class IntentCommand extends BaseCommand {
         try {
             const intentData = {
                 objective: answers.objective,
-                businessValue: answers.businessValue,
-                targetCompletion: answers.targetCompletion || null,
-                context: {
-                    problem: answers.problem || '',
-                    approach: answers.approach || '',
-                    successCriteria: []
-                },
+                business_value: answers.businessValue,
+                success_metrics: 'Success metrics to be defined',
+                hypothesis: answers.approach || 'Initial hypothesis to be refined',
+                status: 'draft',
                 metadata: {
                     priority: answers.priority,
                     category: answers.category,
                     estimatedEffort: 'medium',
-                    tags: []
-                },
-                tasks: tasks
+                    tags: [],
+                    problem: answers.problem || '',
+                    targetCompletion: answers.targetCompletion || null
+                }
             };
 
-            const response = await client.post(`/api/v1/orgs/${org}/workspaces/${workspace}/intents`, intentData);
-            const intent = response.data.intent;
+            const intent = await client.createIntent(intentData);
 
             console.log(chalk.green('\n✓ Intent created successfully!'));
             console.log(chalk.cyan(`\nIntent: ${intent.objective}`));
             console.log(`ID: ${intent.id}`);
-            console.log(`Business Value: ${intent.businessValue}`);
-            console.log(`Priority: ${intent.metadata.priority}`);
-            console.log(`Category: ${intent.metadata.category}`);
-            
-            if (intent.targetCompletion) {
-                console.log(`Target: ${moment(intent.targetCompletion).format('YYYY-MM-DD')}`);
-            }
+            console.log(`Business Value: ${intent.business_value}`);
+            console.log(`Status: ${intent.status}`);
+            console.log(`Created: ${moment(intent.created_at).format('YYYY-MM-DD HH:mm')}`);
             
             if (tasks.length > 0) {
-                console.log(`Tasks: ${tasks.length} initial tasks added`);
+                console.log(`Tasks: ${tasks.length} initial tasks (to be implemented)`);
             }
             
             console.log(chalk.gray('\nView details with: repochief intent show ' + intent.id));
@@ -339,8 +324,7 @@ class IntentCommand extends BaseCommand {
         }
 
         try {
-            const response = await client.get(`/api/v1/orgs/${org}/workspaces/${workspace}/intents/${intentId}`);
-            const intent = response.data.intent;
+            const intent = await client.getIntent(intentId);
 
             console.log(chalk.cyan(`\n🎯 Intent: ${intent.objective}\n`));
             

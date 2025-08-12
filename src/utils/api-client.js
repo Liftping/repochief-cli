@@ -2,7 +2,7 @@ const axios = require('axios');
 const { getWorkspaceId, getToken, storeToken } = require('./workspace');
 
 // API configuration
-const API_BASE_URL = process.env.REPOCHIEF_API_URL || 'https://api.repochief.com/api';
+const API_BASE_URL = process.env.REPOCHIEF_API_URL || 'https://kpmanucrhhvkiimjgint.supabase.co/functions/v1';
 const API_TIMEOUT = 30000; // 30 seconds
 
 /**
@@ -25,7 +25,8 @@ class APIClient {
       async (config) => {
         const authToken = await this.getAuthToken();
         if (authToken) {
-          config.headers.Authorization = `Bearer ${authToken}`;
+          // Use x-api-key header for Supabase Edge Functions
+          config.headers['x-api-key'] = authToken;
         }
         return config;
       },
@@ -180,6 +181,40 @@ class APIClient {
   async getUsage(workspaceId = null) {
     const params = workspaceId ? { device_id: workspaceId } : {};
     return await this.get('/usage', params);
+  }
+
+  // Intent management methods for Supabase Edge Functions
+  async getIntents() {
+    return await this.get('/intents');
+  }
+
+  async getIntent(id) {
+    return await this.get(`/intents/${id}`);
+  }
+
+  async createIntent(intentData) {
+    return await this.post('/intents', intentData);
+  }
+
+  async updateIntent(id, updates) {
+    return await this.put(`/intents/${id}`, updates);
+  }
+
+  async deleteIntent(id) {
+    return await this.delete(`/intents/${id}`);
+  }
+
+  // Workspace registration for CLI
+  async registerWorkspace(userData) {
+    return await this.post('/workspaces/register-cli', userData);
+  }
+
+  async getWorkspace() {
+    return await this.get('/workspaces');
+  }
+
+  async updateWorkspace(updates) {
+    return await this.put('/workspaces', updates);
   }
 }
 
