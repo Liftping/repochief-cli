@@ -36,6 +36,7 @@ const deploymentCommand = require('../src/commands/deployment');
 const intentCommand = require('../src/commands/intent');
 const migrateCommand = require('../src/commands/migrate');
 const configCommand = require('../src/commands/config');
+const deviceCommand = require('../src/commands/device');
 
 // Prediction integration
 const { wrapWithPrediction } = require('../src/integrations/prediction');
@@ -219,6 +220,9 @@ program
   .option('-l, --list', 'List all configuration')
   .option('--api-keys', 'Configure API keys interactively')
   .action(configCommand.execute.bind(configCommand));
+
+// Device command - manage device registration
+program.addCommand(deviceCommand());
 
 // Doctor command - system diagnostics
 program
