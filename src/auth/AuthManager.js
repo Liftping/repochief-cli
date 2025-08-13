@@ -1,10 +1,14 @@
 /**
  * Authentication Manager for RepoChief CLI
  * Provides authenticated API client instances
+ * 
+ * Updated to use workspace-based authentication for consistency
+ * with auth commands (login/logout/status)
  */
 
 const { APIClient } = require('../utils/api-client');
-const { getDeviceId, getToken } = require('../utils/device');
+const { getWorkspaceId, getToken } = require('../utils/workspace');
+const { getDeviceId, getToken: getDeviceToken } = require('../utils/device');
 const chalk = require('chalk');
 
 /**
@@ -13,22 +17,30 @@ const chalk = require('chalk');
  */
 async function getClient() {
   try {
+    // Try workspace-based authentication first (primary system)
+    const workspaceId = await getWorkspaceId();
+    
+    if (workspaceId) {
+      const token = await getToken(workspaceId);
+      if (token) {
+        return new APIClient(token);
+      }
+    }
+    
+    // Fallback to legacy device-based authentication for backward compatibility
     const deviceId = await getDeviceId();
-    
-    if (!deviceId) {
-      console.error(chalk.red('\n❌ Not authenticated. Please login first:'));
-      console.log(chalk.yellow('   repochief auth login\n'));
-      process.exit(1);
+    if (deviceId) {
+      const deviceToken = await getDeviceToken(deviceId);
+      if (deviceToken) {
+        console.warn(chalk.yellow('⚠️  Using legacy device authentication. Consider running: repochief auth login'));
+        return new APIClient(deviceToken);
+      }
     }
     
-    const token = await getToken(deviceId);
-    if (!token) {
-      console.error(chalk.red('\n❌ No valid token found. Please login again:'));
-      console.log(chalk.yellow('   repochief auth login\n'));
-      process.exit(1);
-    }
-    
-    return new APIClient(token);
+    // No authentication found
+    console.error(chalk.red('\n❌ No valid token found. Please login first:'));
+    console.log(chalk.yellow('   repochief auth login\n'));
+    process.exit(1);
   } catch (error) {
     console.error(chalk.red(`\n❌ Authentication error: ${error.message}`));
     console.log(chalk.yellow('Try logging in again: repochief auth login\n'));
@@ -50,11 +62,21 @@ function getPublicClient() {
  */
 async function isAuthenticated() {
   try {
-    const deviceId = await getDeviceId();
-    if (!deviceId) return false;
+    // Check workspace-based authentication first
+    const workspaceId = await getWorkspaceId();
+    if (workspaceId) {
+      const token = await getToken(workspaceId);
+      if (token) return true;
+    }
     
-    const token = await getToken(deviceId);
-    return !!token;
+    // Fallback to legacy device-based authentication
+    const deviceId = await getDeviceId();
+    if (deviceId) {
+      const deviceToken = await getDeviceToken(deviceId);
+      if (deviceToken) return true;
+    }
+    
+    return false;
   } catch (error) {
     return false;
   }
