@@ -42,7 +42,7 @@ async function ensureConfigDir() {
 /**
  * Get or create workspace ID
  */
-async function getOrCreateWorkspaceId() {
+async function getOrCreateWorkspaceId(options = {}) {
   await ensureConfigDir();
   
   try {
@@ -52,7 +52,7 @@ async function getOrCreateWorkspaceId() {
   } catch (error) {
     // Workspace file doesn't exist, create new workspace
     const workspaceId = `ws_${uuidv4().replace(/-/g, '')}`;
-    const workspaceName = await promptForWorkspaceName();
+    const workspaceName = await promptForWorkspaceName(options);
     
     const workspaceInfo = {
       workspaceId,
@@ -99,28 +99,81 @@ async function getWorkspaceInfo() {
 /**
  * Prompt for workspace name
  */
-async function promptForWorkspaceName() {
-  const defaultName = `${os.hostname()} - ${os.platform()}`;
+/**
+ * Check if running in non-interactive environment
+ */
+function isNonInteractive() {
+  return !process.stdin.isTTY || 
+         process.env.CI === 'true' || 
+         process.env.REPOCHIEF_AUTO_WORKSPACE === 'true';
+}
+
+/**
+ * Generate unique default workspace name
+ */
+function generateDefaultWorkspaceName() {
+  const hostname = os.hostname();
+  const platform = os.platform();
+  const shortHash = crypto.randomBytes(3).toString('hex'); // 6-char hex
+  return `${hostname}-${platform}-${shortHash}`;
+}
+
+/**
+ * Prompt for workspace name with non-interactive fallback
+ */
+async function promptForWorkspaceName(options = {}) {
+  // Check for explicit workspace name from options or environment
+  if (options.workspaceName) {
+    return options.workspaceName.trim();
+  }
   
-  const answers = await inquirer.prompt([
-    {
-      type: 'input',
-      name: 'workspaceName',
-      message: 'Name this workspace:',
-      default: defaultName,
-      validate: (input) => {
-        if (!input || input.trim().length === 0) {
-          return 'Workspace name cannot be empty';
+  if (process.env.REPOCHIEF_WORKSPACE_NAME) {
+    return process.env.REPOCHIEF_WORKSPACE_NAME.trim();
+  }
+  
+  // Generate default name for fallback
+  const defaultName = generateDefaultWorkspaceName();
+  
+  // Use auto-generated name if explicitly requested or in non-interactive environment
+  if (options.autoWorkspace || isNonInteractive()) {
+    return defaultName;
+  }
+  
+  // Interactive prompt with timeout
+  try {
+    const answers = await Promise.race([
+      inquirer.prompt([
+        {
+          type: 'input',
+          name: 'workspaceName',
+          message: 'Name this workspace:',
+          default: defaultName,
+          validate: (input) => {
+            if (!input || input.trim().length === 0) {
+              return 'Workspace name cannot be empty';
+            }
+            if (input.length > 255) {
+              return 'Workspace name must be less than 255 characters';
+            }
+            return true;
+          }
         }
-        if (input.length > 255) {
-          return 'Workspace name must be less than 255 characters';
-        }
-        return true;
-      }
+      ]),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('PROMPT_TIMEOUT')), 30000)
+      )
+    ]);
+    
+    return answers.workspaceName.trim();
+  } catch (error) {
+    if (error.message === 'PROMPT_TIMEOUT') {
+      throw new Error(
+        'Cannot prompt in this environment. Use --workspace-name <name> or --auto-workspace ' +
+        '(or set REPOCHIEF_WORKSPACE_NAME environment variable).'
+      );
     }
-  ]);
-  
-  return answers.workspaceName.trim();
+    throw error;
+  }
 }
 
 /**

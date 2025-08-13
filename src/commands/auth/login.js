@@ -16,10 +16,12 @@ function createLoginCommand() {
     .description('Authenticate with RepoChief cloud')
     .option('--token <token>', 'Use a Personal Access Token (PAT) instead of OAuth')
     .option('--no-browser', 'Don\'t automatically open the browser')
+    .option('--workspace-name <name>', 'Specify workspace name (for non-interactive environments)')
+    .option('--auto-workspace', 'Automatically generate workspace name without prompting')
     .action(async (options) => {
       try {
         if (options.token) {
-          await handleTokenAuth(options.token);
+          await handleTokenAuth(options.token, options);
         } else {
           await handleOAuthFlow(options);
         }
@@ -35,12 +37,16 @@ function createLoginCommand() {
 /**
  * Handle Personal Access Token authentication
  */
-async function handleTokenAuth(token) {
+async function handleTokenAuth(token, options = {}) {
   const spinner = ora('Validating token...').start();
   
   try {
-    // Get or create workspace ID
-    const workspaceId = await getOrCreateWorkspaceId();
+    // Get or create workspace ID with options
+    const workspaceOptions = {
+      workspaceName: options.workspaceName,
+      autoWorkspace: options.autoWorkspace
+    };
+    const workspaceId = await getOrCreateWorkspaceId(workspaceOptions);
     
     // Validate token with API
     const client = new APIClient();
@@ -100,7 +106,11 @@ async function handleOAuthFlow(options) {
     const tokens = await authData.pollForToken();
     
     // Get or create workspace ID after auth succeeds
-    const workspaceId = await getOrCreateWorkspaceId();
+    const workspaceOptions = {
+      workspaceName: options.workspaceName,
+      autoWorkspace: options.autoWorkspace
+    };
+    const workspaceId = await getOrCreateWorkspaceId(workspaceOptions);
     
     // Store tokens securely
     await storeToken(workspaceId, tokens.refresh_token);
