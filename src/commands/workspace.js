@@ -7,6 +7,7 @@ const chalk = require('chalk');
 const inquirer = require('inquirer');
 const { getClient } = require('../auth/AuthManager');
 const BaseCommand = require('./BaseCommand');
+const registerWorkspace = require('./workspace/register');
 
 class WorkspaceCommand extends BaseCommand {
     constructor() {
@@ -16,7 +17,8 @@ class WorkspaceCommand extends BaseCommand {
             create: this.createWorkspace.bind(this),
             switch: this.switchWorkspace.bind(this),
             info: this.showWorkspaceInfo.bind(this),
-            delete: this.deleteWorkspace.bind(this)
+            delete: this.deleteWorkspace.bind(this),
+            register: registerWorkspace
         };
     }
 
@@ -28,6 +30,7 @@ class WorkspaceCommand extends BaseCommand {
             console.log('  repochief workspace switch         - Switch active workspace');
             console.log('  repochief workspace info           - Show current workspace info');
             console.log('  repochief workspace delete         - Delete a workspace');
+            console.log('  repochief workspace register       - Register workspace with cloud');
             return;
         }
 

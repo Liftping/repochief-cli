@@ -2,7 +2,7 @@ const axios = require('axios');
 const { getWorkspaceId, getToken, storeToken } = require('./workspace');
 
 // API configuration
-const API_BASE_URL = process.env.REPOCHIEF_API_URL || 'https://kpmanucrhhvkiimjgint.supabase.co/functions/v1';
+const API_BASE_URL = process.env.REPOCHIEF_API_URL || 'https://api.repochief.com/functions/v1';
 const API_TIMEOUT = 30000; // 30 seconds
 
 // Supabase anon key for public API calls
@@ -31,7 +31,8 @@ class APIClient {
       '/auth/device',
       '/auth/token', 
       '/auth/authorize',
-      '/auth/refresh'
+      '/auth/refresh',
+      '/workspaces/register-cli'
     ];
     
     // Request interceptor to add auth token
@@ -54,6 +55,7 @@ class APIClient {
             config.headers['x-api-key'] = authToken;
           }
         }
+        
         return config;
       },
       (error) => Promise.reject(error)

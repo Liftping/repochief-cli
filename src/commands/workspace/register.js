@@ -2,7 +2,8 @@ const chalk = require('chalk');
 const ora = require('ora');
 const os = require('os');
 const { APIClient } = require('../../utils/api-client');
-const { getWorkspaceInfo, getToken } = require('../../utils/workspace');
+const { getWorkspaceInfo, getToken, storeToken } = require('../../utils/workspace');
+const BaseCommand = require('../BaseCommand');
 
 /**
  * Register workspace with cloud
@@ -25,8 +26,17 @@ async function registerWorkspace() {
       return;
     }
     
-    // Create authenticated client
-    const client = new APIClient(token);
+    // Validate token and get user ID first
+    const tempClient = new APIClient(token);
+    const validation = await tempClient.validateToken();
+    
+    if (!validation.valid || !validation.user_id) {
+      spinner.fail('Token validation failed');
+      return;
+    }
+    
+    // Create API client for registration
+    const client = new APIClient();
     
     // Prepare registration data
     const registrationData = {
@@ -42,24 +52,37 @@ async function registerWorkspace() {
       }
     };
     
-    // Register with cloud
-    const response = await client.post('/workspaces/register-cli', registrationData);
+    // Register with cloud - manually add x-user-id header
+    const response = await client.axios.post('/workspaces/register-cli', registrationData, {
+      headers: {
+        'x-user-id': validation.user_id
+      }
+    });
     
     spinner.succeed('Workspace registered successfully!');
     
     console.log(chalk.green('\n✓ Workspace Details:'));
-    console.log(`  ID: ${chalk.cyan(response.workspace.id)}`);
-    console.log(`  Name: ${chalk.cyan(response.workspace.name)}`);
-    console.log(`  API Key: ${chalk.yellow(response.workspace.api_key)}`);
-    console.log(`  Status: ${chalk.green(response.workspace.status)}`);
+    console.log(`  ID: ${chalk.cyan(response.data.workspace.id)}`);
+    console.log(`  Name: ${chalk.cyan(response.data.workspace.name)}`);
+    console.log(`  API Key: ${chalk.yellow(response.data.workspace.api_key)}`);
+    console.log(`  Status: ${chalk.green(response.data.workspace.status)}`);
     
     // Show next steps
+    // Store the workspace API key as the token for this workspace
+    await storeToken(workspaceInfo.workspaceId, response.data.workspace.api_key);
+    
+    // Set this as the active workspace for local CLI operations  
+    const baseCommand = new BaseCommand();
+    const config = baseCommand.loadConfig();
+    config.activeWorkspace = response.data.workspace.id; // Use workspace ID as active workspace
+    baseCommand.saveConfig(config);
+    
     console.log(chalk.cyan('\nNext steps:'));
     console.log('  • Run', chalk.bold('repochief workspace status'), 'to verify connection');
     console.log('  • Run', chalk.bold('repochief intent create'), 'to create your first intent');
     console.log('  • Visit', chalk.bold('https://app.repochief.com'), 'to view in dashboard');
     
-    return response.workspace;
+    return response.data.workspace;
     
   } catch (error) {
     spinner.fail('Failed to register workspace');
