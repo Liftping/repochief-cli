@@ -1,6 +1,7 @@
 const { promises: fs } = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const inquirer = require('inquirer');
 
@@ -22,6 +23,14 @@ function getKeytar() {
 const CONFIG_DIR = path.join(os.homedir(), '.repochief');
 const WORKSPACE_FILE = path.join(CONFIG_DIR, 'workspace.json');
 const SERVICE_NAME = 'repochief';
+
+// Encryption configuration
+const ALGORITHM = 'aes-256-gcm';
+const SALT_LENGTH = 64;
+const TAG_LENGTH = 16;
+const IV_LENGTH = 16;
+const KEY_LENGTH = 32;
+const ITERATIONS = 100000;
 
 /**
  * Ensure config directory exists
@@ -169,9 +178,67 @@ async function removeToken(workspaceId) {
 }
 
 /**
+ * Get or create encryption key derived from machine ID
+ */
+function getEncryptionKey() {
+  // Use machine-specific data as key material
+  const machineId = `${os.hostname()}-${os.platform()}-${os.arch()}-${os.homedir()}`;
+  // Add a fixed salt for RepoCHief
+  const salt = crypto.createHash('sha256').update('repochief-cli-token-encryption').digest();
+  // Derive key using PBKDF2
+  return crypto.pbkdf2Sync(machineId, salt, ITERATIONS, KEY_LENGTH, 'sha256');
+}
+
+/**
+ * Encrypt token using AES-256-GCM
+ */
+function encryptToken(token) {
+  const key = getEncryptionKey();
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const salt = crypto.randomBytes(SALT_LENGTH);
+  
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+  
+  let encrypted = cipher.update(token, 'utf8');
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  
+  const tag = cipher.getAuthTag();
+  
+  // Combine salt, iv, tag, and encrypted data
+  return Buffer.concat([salt, iv, tag, encrypted]).toString('base64');
+}
+
+/**
+ * Decrypt token using AES-256-GCM
+ */
+function decryptToken(encryptedData) {
+  const data = Buffer.from(encryptedData, 'base64');
+  
+  if (data.length < SALT_LENGTH + IV_LENGTH + TAG_LENGTH) {
+    throw new Error('Invalid encrypted data');
+  }
+  
+  const salt = data.slice(0, SALT_LENGTH);
+  const iv = data.slice(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+  const tag = data.slice(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
+  const encrypted = data.slice(SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
+  
+  const key = getEncryptionKey();
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+  decipher.setAuthTag(tag);
+  
+  let decrypted = decipher.update(encrypted);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  
+  return decrypted.toString('utf8');
+}
+
+/**
  * Fallback token storage (encrypted file)
  */
 async function storeTokenFallback(workspaceId, token) {
+  await ensureConfigDir(); // Ensure directory exists
+  
   const tokenFile = path.join(CONFIG_DIR, '.tokens');
   let tokens = {};
   
@@ -182,10 +249,9 @@ async function storeTokenFallback(workspaceId, token) {
     // File doesn't exist yet
   }
   
-  // Simple obfuscation (not secure, but better than plaintext)
-  // In production, use proper encryption
-  const obfuscated = Buffer.from(token).toString('base64');
-  tokens[workspaceId] = obfuscated;
+  // Encrypt token using AES-256-GCM
+  const encrypted = encryptToken(token);
+  tokens[workspaceId] = encrypted;
   
   await fs.writeFile(tokenFile, JSON.stringify(tokens), { mode: 0o600 });
 }
@@ -200,11 +266,27 @@ async function getTokenFallback(workspaceId) {
     const tokens = JSON.parse(data);
     
     if (tokens[workspaceId]) {
-      // Deobfuscate
-      return Buffer.from(tokens[workspaceId], 'base64').toString();
+      try {
+        // Try to decrypt with new encryption
+        return decryptToken(tokens[workspaceId]);
+      } catch (error) {
+        // Fallback for old base64 tokens (migration path)
+        try {
+          const decoded = Buffer.from(tokens[workspaceId], 'base64').toString();
+          // If it's a valid token (starts with expected format), migrate it
+          if (decoded && (decoded.startsWith('sbp_') || decoded.includes('.'))) {
+            // Re-save with proper encryption
+            await storeTokenFallback(workspaceId, decoded);
+            return decoded;
+          }
+        } catch (legacyError) {
+          // Not a legacy token either
+        }
+        throw error; // Re-throw original decryption error
+      }
     }
   } catch (error) {
-    // Token not found
+    // Token not found or decryption failed
   }
   
   return null;

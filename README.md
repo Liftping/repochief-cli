@@ -59,14 +59,21 @@ repochief run tasks/default.json
 
 ## Authentication
 
-RepoChief CLI supports cloud synchronization across multiple devices. First, authenticate with your RepoChief account:
+**Prerequisites**: RepoChief CLI requires a dashboard account. Sign up at https://app.repochief.com before authenticating the CLI.
+
+### Setting Up Authentication
+
+1. **Create your account** at https://app.repochief.com/sign-up
+2. **Authenticate the CLI** using OAuth device flow:
 
 ```bash
 # Login with OAuth device flow (recommended)
 repochief auth login
+# This will display a code and URL - you must be signed in to the dashboard to approve
 
-# Login with Personal Access Token
+# Alternative: Login with Personal Access Token
 repochief auth login --token your-pat-token
+# Generate PAT from dashboard: https://app.repochief.com/settings/tokens
 
 # Check authentication status
 repochief auth status
@@ -77,6 +84,8 @@ repochief auth status --verbose
 # Logout
 repochief auth logout
 ```
+
+**Note**: The device authorization page requires you to be signed in to your RepoChief dashboard account. This ensures secure device linking to your workspace.
 
 ## Commands
 

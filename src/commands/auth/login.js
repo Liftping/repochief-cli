@@ -70,21 +70,20 @@ async function handleOAuthFlow(options) {
   const spinner = ora('Initializing authentication...').start();
   
   try {
-    // Get or create workspace ID
-    const workspaceId = await getOrCreateWorkspaceId();
-    
-    // Start workspace flow
+    // Start workspace flow (no auth needed for device flow)
     const authData = await workspaceFlow();
     
     spinner.stop();
     
     // Display user instructions
     console.log('');
-    console.log(chalk.cyan('To authenticate, please visit:'));
-    console.log(chalk.bold.white(authData.verification_uri));
+    console.log(chalk.cyan('To authenticate your CLI device:'));
     console.log('');
-    console.log('Enter this code:');
-    console.log(chalk.bold.yellow(authData.user_code));
+    console.log('1. Visit: ' + chalk.bold.white(authData.verification_uri));
+    console.log('2. Sign in to your dashboard account ' + chalk.yellow('(required)'));
+    console.log('3. Enter code: ' + chalk.bold.green(authData.user_code));
+    console.log('');
+    console.log(chalk.dim('Note: You must have a RepoCHief account. Sign up at https://app.repochief.com'));
     console.log('');
     
     // Open browser if not disabled
@@ -99,6 +98,9 @@ async function handleOAuthFlow(options) {
     spinner.start();
     
     const tokens = await authData.pollForToken();
+    
+    // Get or create workspace ID after auth succeeds
+    const workspaceId = await getOrCreateWorkspaceId();
     
     // Store tokens securely
     await storeToken(workspaceId, tokens.refresh_token);

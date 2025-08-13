@@ -5,12 +5,18 @@ const { getWorkspaceId, getToken, storeToken } = require('./workspace');
 const API_BASE_URL = process.env.REPOCHIEF_API_URL || 'https://kpmanucrhhvkiimjgint.supabase.co/functions/v1';
 const API_TIMEOUT = 30000; // 30 seconds
 
+// Supabase anon key for public API calls
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwbWFudWNyaGh2a2lpbWpnaW50Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5NTUxMTUsImV4cCI6MjA3MDUzMTExNX0.eE5e0dmR8omxy4I1PBM8ug_FhTR7wYLK6V4r0BXzpcQ';
+
 /**
  * API Client with automatic token management
  */
 class APIClient {
-  constructor(token = null) {
+  constructor(token = null, options = {}) {
     this.token = token;
+    this.maxRetries = options.maxRetries || 3;
+    this.retryDelay = options.retryDelay || 1000;
+    
     this.axios = axios.create({
       baseURL: API_BASE_URL,
       timeout: API_TIMEOUT,
@@ -20,26 +26,56 @@ class APIClient {
       }
     });
     
+    // Define public endpoints that don't need user auth
+    this.publicEndpoints = [
+      '/auth/device',
+      '/auth/token', 
+      '/auth/authorize',
+      '/auth/validate',
+      '/auth/refresh'
+    ];
+    
     // Request interceptor to add auth token
     this.axios.interceptors.request.use(
       async (config) => {
-        const authToken = await this.getAuthToken();
-        if (authToken) {
-          // Use x-api-key header for Supabase Edge Functions
-          config.headers['x-api-key'] = authToken;
+        // Always add Supabase anon key headers for Edge Function access
+        config.headers['Authorization'] = `Bearer ${SUPABASE_ANON_KEY}`;
+        config.headers['apikey'] = SUPABASE_ANON_KEY;
+        
+        // Check if this is a public endpoint
+        const isPublicEndpoint = this.publicEndpoints.some(endpoint => 
+          config.url?.includes(endpoint)
+        );
+        
+        // Add user auth token if available and not a public endpoint
+        if (!isPublicEndpoint) {
+          const authToken = await this.getAuthToken();
+          if (authToken) {
+            // Use x-api-key header for Supabase Edge Functions
+            config.headers['x-api-key'] = authToken;
+          }
         }
         return config;
       },
       (error) => Promise.reject(error)
     );
     
-    // Response interceptor to handle token refresh
+    // Response interceptor to handle token refresh and retries
     this.axios.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
         
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // Initialize retry count
+        originalRequest._retryCount = originalRequest._retryCount || 0;
+        
+        // Only try to refresh if we have a token and it's not a public endpoint
+        const isPublicEndpoint = this.publicEndpoints.some(endpoint => 
+          originalRequest.url?.includes(endpoint)
+        );
+        
+        // Handle 401 - try token refresh
+        if (error.response?.status === 401 && !originalRequest._retry && !isPublicEndpoint) {
           originalRequest._retry = true;
           
           try {
@@ -51,6 +87,24 @@ class APIClient {
             authError.code = 'UNAUTHORIZED';
             throw authError;
           }
+        }
+        
+        // Handle network errors and 5xx errors with retry
+        const shouldRetry = !error.response || 
+                          (error.response.status >= 500 && error.response.status < 600) ||
+                          error.code === 'ECONNABORTED' ||
+                          error.code === 'ENOTFOUND' ||
+                          error.code === 'ETIMEDOUT';
+        
+        if (shouldRetry && originalRequest._retryCount < this.maxRetries) {
+          originalRequest._retryCount++;
+          
+          // Exponential backoff
+          const delay = this.retryDelay * Math.pow(2, originalRequest._retryCount - 1);
+          
+          await new Promise(resolve => setTimeout(resolve, delay));
+          
+          return this.axios(originalRequest);
         }
         
         return Promise.reject(error);
@@ -67,14 +121,33 @@ class APIClient {
     const workspaceId = await getWorkspaceId();
     if (!workspaceId) return null;
     
-    // Try to get access token from memory/cache
-    if (this.accessToken && this.accessTokenExpiry > Date.now()) {
-      return this.accessToken;
+    // Check if we have a cached access token
+    if (this.accessToken) {
+      // Proactively refresh if token expires within 5 minutes
+      const fiveMinutes = 5 * 60 * 1000;
+      if (this.accessTokenExpiry && this.accessTokenExpiry - Date.now() < fiveMinutes) {
+        // Token is about to expire, refresh proactively
+        try {
+          const refreshToken = await getToken(workspaceId);
+          if (refreshToken) {
+            await this.handleTokenRefresh();
+            return this.accessToken;
+          }
+        } catch (error) {
+          // Refresh failed, return null
+          return null;
+        }
+      }
+      
+      // Token is still valid
+      if (this.accessTokenExpiry > Date.now()) {
+        return this.accessToken;
+      }
     }
     
-    // Get refresh token from storage
-    const refreshToken = await getToken(workspaceId);
-    return refreshToken;
+    // Don't try to refresh on initial auth - just return null
+    // The auth flow will handle getting the initial tokens
+    return null;
   }
   
   /**

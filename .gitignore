@@ -2,7 +2,8 @@
 node_modules/
 
 # Test files
-test-auth-flow.js
+test-*.js
+.device-auth-temp.json
 
 # Token storage (fallback)
 .tokens
