@@ -72,6 +72,9 @@ program
   .option('-m, --mock', 'Run in mock mode (no API calls)')
   .option('-w, --watch', 'Watch progress in real-time')
   .option('-o, --output <dir>', 'Output directory for results', './output')
+  .option('-l, --use-local', 'Use local AI tool execution via adapters')
+  .option('--adapter <type>', 'AI adapter to use (claude-code, aider)', 'claude-code')
+  .option('--mode <mode>', 'Execution mode (direct-tmux, adapter, hybrid)', 'direct-tmux')
   .action(wrapWithPrediction(runCommand, 'run'));
 
 // Init command - setup project

@@ -61,12 +61,16 @@ async function runCommand(taskFile, options) {
     const budget = parseFloat(options.budget) || 10;
     const mockMode = options.mock || process.env.MOCK_MODE === 'true';
     const outputDir = ensureOutputDir(options.output);
+    const useLocal = options.useLocal || options.local || false;
+    const adapterType = options.adapter || 'claude-code';
+    const executionMode = useLocal ? 'adapter' : (options.mode || 'direct-tmux');
     
     console.log(chalk.blue('\n📋 Task Configuration:'));
     console.log(chalk.gray(`  File: ${taskFile}`));
     console.log(chalk.gray(`  Agents: ${agentCount}`));
     console.log(chalk.gray(`  Budget: $${budget}`));
     console.log(chalk.gray(`  Mode: ${mockMode ? 'Mock (no API costs)' : 'Live'}`));
+    console.log(chalk.gray(`  Execution: ${useLocal ? `Local (${adapterType})` : 'Cloud'}`));
     console.log(chalk.gray(`  Output: ${outputDir}\n`));
     
     // Check API keys if not in mock mode
@@ -97,15 +101,45 @@ async function runCommand(taskFile, options) {
     const tasks = parseTaskFile(taskFile);
     spinner.succeed(`Loaded ${tasks.length} tasks`);
     
-    // Create orchestrator
+    // Create orchestrator with V2 support if available
     spinner.start('Initializing orchestrator...');
-    orchestrator = createOrchestrator({
-      sessionName: `repochief-${Date.now()}`,
-      totalBudget: budget,
-      mockMode: mockMode,
-      outputDir: outputDir,
-      useSimpleStore: true  // Use lightweight file storage for MVP
-    });
+    
+    // Try to use V2 orchestrator with adapter support
+    let OrchestratorClass;
+    try {
+      OrchestratorClass = require('@liftping/repochief-core').AIAgentOrchestratorV2;
+      if (useLocal) {
+        console.log(chalk.gray('  Using Orchestrator V2 with adapter support'));
+      }
+    } catch (e) {
+      // Fall back to createOrchestrator function
+      OrchestratorClass = null;
+    }
+    
+    if (OrchestratorClass) {
+      orchestrator = new OrchestratorClass({
+        sessionName: `repochief-${Date.now()}`,
+        totalBudget: budget,
+        mockMode: mockMode,
+        outputDir: outputDir,
+        useSimpleStore: true,
+        executionMode: executionMode,
+        useLocalExecution: useLocal,
+        adapterType: adapterType
+      });
+    } else {
+      orchestrator = createOrchestrator({
+        sessionName: `repochief-${Date.now()}`,
+        totalBudget: budget,
+        mockMode: mockMode,
+        outputDir: outputDir,
+        useSimpleStore: true  // Use lightweight file storage for MVP
+      });
+      
+      if (useLocal) {
+        console.log(chalk.yellow('  ⚠️  Local execution requested but V2 orchestrator not available'));
+      }
+    }
     
     await orchestrator.initialize();
     spinner.succeed('Orchestrator initialized');
