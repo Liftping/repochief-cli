@@ -31,7 +31,6 @@ class APIClient {
       '/auth/device',
       '/auth/token', 
       '/auth/authorize',
-      '/auth/validate',
       '/auth/refresh'
     ];
     

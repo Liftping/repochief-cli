@@ -116,7 +116,7 @@ async function handleOAuthFlow(options) {
     await storeToken(workspaceId, tokens.refresh_token);
     
     spinner.succeed('Authentication successful!');
-    console.log(chalk.green(`✓ Logged in as ${tokens.user.email}`));
+    console.log(chalk.green(`✓ Logged in as ${tokens.user?.email || 'User'}`));
     console.log(chalk.gray(`  Workspace: ${workspaceId}`));
     
     // Show next steps
