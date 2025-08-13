@@ -18,6 +18,9 @@ require('dotenv').config();
 // System requirements check
 const { validateForCommand } = require('../src/utils/system-check');
 
+// Analytics for development acceleration
+const { trackCommand, trackError, flushAnalytics } = require('../src/utils/analytics');
+
 // Commands
 const runCommand = require('../src/commands/run');
 const initCommand = require('../src/commands/init');
@@ -239,15 +242,27 @@ program.exitOverride();
 
 // Main CLI entry point
 (async () => {
+  const startTime = Date.now();
+  let commandName = 'unknown';
+  let commandSuccess = false;
+  
   try {
     // Extract command name from arguments
     const args = process.argv.slice(2);
-    let commandName = args[0];
+    commandName = args[0];
     
     // Handle special cases
     if (!commandName || commandName.startsWith('-')) {
       commandName = 'help';
     }
+    
+    // Track CLI session start
+    trackCommand('cli_session_started', { 
+      command: commandName,
+      args: args.slice(1),
+      node_version: process.version,
+      cli_version: packageInfo.version
+    });
     
     // Skip validation for these commands
     const skipValidation = ['--version', '-v', '--help', '-h'];
@@ -255,6 +270,8 @@ program.exitOverride();
       // Quick validation for essential commands
       const isValid = await validateForCommand(commandName);
       if (!isValid) {
+        trackCommand(commandName, { validation_failed: true }, false, Date.now() - startTime);
+        await flushAnalytics();
         process.exit(1);
       }
     }
@@ -265,15 +282,33 @@ program.exitOverride();
     // Show help if no command provided
     if (!process.argv.slice(2).length) {
       program.outputHelp();
-      process.exit(0);
+      commandName = 'help_displayed';
+      commandSuccess = true;
+    } else {
+      commandSuccess = true;
     }
+    
+    // Track successful command completion
+    const duration = Date.now() - startTime;
+    trackCommand(commandName, {}, commandSuccess, duration);
+    
   } catch (error) {
+    const duration = Date.now() - startTime;
+    
     if (error.code === 'commander.unknownCommand') {
       console.error(chalk.red(`\n❌ Unknown command: ${error.message}`));
       console.log(chalk.yellow('Run "repochief --help" to see available commands\n'));
+      trackError(commandName, error, { type: 'unknown_command' });
     } else {
       console.error(chalk.red(`\n❌ Error: ${error.message}\n`));
+      trackError(commandName, error, { type: 'general_error' });
     }
+    
+    trackCommand(commandName, {}, false, duration);
+    await flushAnalytics();
     process.exit(1);
+  } finally {
+    // Ensure analytics are flushed before exit
+    await flushAnalytics();
   }
 })();
