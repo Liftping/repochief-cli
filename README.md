@@ -18,19 +18,7 @@ npx @liftping/repochief-cli demo --mock
 
 ## Quick Start
 
-### 1. Run the Demo
-
-Try the TODO API demo that showcases a 4-agent swarm:
-
-```bash
-# Run in mock mode (no API costs)
-repochief demo --mock
-
-# Run with real AI models
-repochief demo
-```
-
-### 2. Initialize a Project
+### 1. Initialize a Project
 
 Create a new RepoChief project:
 
@@ -39,9 +27,31 @@ repochief init my-project
 cd my-project
 ```
 
-### 3. Configure API Keys
+### 2. Install Claude Code (For Local Execution)
 
-Add your API keys to the `.env` file:
+Install Claude Code CLI for privacy-first local execution:
+
+```bash
+# Visit https://claude.ai/download to install Claude Code
+# Verify installation
+claude --version
+```
+
+### 3. Run Tasks Locally (Recommended)
+
+Execute AI agent tasks locally for privacy and control:
+
+```bash
+# Local execution with Claude Code adapter (no API keys needed for local tools)
+repochief run tasks/default.json --use-local --watch
+
+# Hybrid mode - local execution with cloud synchronization
+repochief run tasks/default.json --mode hybrid --watch
+```
+
+### 4. Alternative: Cloud Execution
+
+For cloud execution, configure API keys in the `.env` file:
 
 ```env
 OPENAI_API_KEY=your-openai-key
@@ -49,12 +59,23 @@ ANTHROPIC_API_KEY=your-anthropic-key
 GOOGLE_API_KEY=your-google-key
 ```
 
-### 4. Run Tasks
-
-Execute your AI agent tasks:
+Then run:
 
 ```bash
-repochief run tasks/default.json
+# Traditional cloud execution
+repochief run tasks/default.json --watch
+```
+
+### 5. Try the Demo
+
+Explore the TODO API demo that showcases a 4-agent swarm:
+
+```bash
+# Run in mock mode (no costs, see the workflow)
+repochief demo --mock
+
+# Run with real AI models (requires API keys)
+repochief demo
 ```
 
 ## Authentication
@@ -102,15 +123,33 @@ Subcommands:
 
 Execute AI agents with a task configuration file.
 
-Options:
+**Local Execution (Recommended)**:
+- `-l, --use-local` - Use local AI tool execution via adapters (privacy-first)
+- `--adapter <type>` - AI adapter to use: claude-code, aider (default: claude-code)  
+- `--mode <mode>` - Execution mode: hybrid, adapter, direct-tmux (default: hybrid)
+
+**General Options**:
 - `-a, --agents <number>` - Number of agents to spawn (default: 3)
 - `-b, --budget <amount>` - Total budget in USD (default: 10)
 - `-m, --mock` - Run in mock mode (no API calls)
 - `-w, --watch` - Watch progress in real-time
 - `-o, --output <dir>` - Output directory for results (default: ./output)
 
-Example:
+**Local Execution Examples (Recommended)**:
 ```bash
+# Local execution with Claude Code adapter (privacy-first)
+repochief run tasks/feature-development.json --use-local --watch
+
+# Hybrid mode - local execution with cloud monitoring
+repochief run tasks/code-review.json --mode hybrid --agents 3
+
+# Advanced local setup with specific adapter
+repochief run tasks/security-audit.json --use-local --adapter claude-code --budget 15
+```
+
+**Cloud Execution Examples**:
+```bash
+# Traditional cloud execution
 repochief run tasks/feature-development.json --agents 5 --budget 20 --watch
 ```
 

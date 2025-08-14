@@ -63,14 +63,14 @@ async function runCommand(taskFile, options) {
     const outputDir = ensureOutputDir(options.output);
     const useLocal = options.useLocal || options.local || false;
     const adapterType = options.adapter || 'claude-code';
-    const executionMode = useLocal ? 'adapter' : (options.mode || 'direct-tmux');
+    const executionMode = useLocal ? 'adapter' : (options.mode || 'hybrid');
     
     console.log(chalk.blue('\n📋 Task Configuration:'));
     console.log(chalk.gray(`  File: ${taskFile}`));
     console.log(chalk.gray(`  Agents: ${agentCount}`));
     console.log(chalk.gray(`  Budget: $${budget}`));
     console.log(chalk.gray(`  Mode: ${mockMode ? 'Mock (no API costs)' : 'Live'}`));
-    console.log(chalk.gray(`  Execution: ${useLocal ? `Local (${adapterType})` : 'Cloud'}`));
+    console.log(chalk.gray(`  Execution: ${useLocal ? `Local (${adapterType})` : `${executionMode.charAt(0).toUpperCase() + executionMode.slice(1)}`}`));
     console.log(chalk.gray(`  Output: ${outputDir}\n`));
     
     // Check API keys if not in mock mode
