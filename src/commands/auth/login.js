@@ -121,9 +121,10 @@ async function handleOAuthFlow(options) {
     
     // Automatically register workspace with cloud
     spinner.start('Registering workspace with cloud...');
+    let registeredWorkspace;
     try {
       const { registerWorkspace } = require('../workspace/register');
-      await registerWorkspace();
+      registeredWorkspace = await registerWorkspace();
       spinner.succeed('Workspace registered with cloud');
     } catch (error) {
       spinner.warn('Could not register workspace automatically');
@@ -135,6 +136,15 @@ async function handleOAuthFlow(options) {
     console.log(chalk.cyan('Next steps:'));
     console.log('  • Run', chalk.bold('repochief status'), 'to verify connection');
     console.log('  • Run', chalk.bold('repochief sync'), 'to synchronize your projects');
+    
+    // If workspace was registered, provide dashboard link
+    if (registeredWorkspace && registeredWorkspace.id && registeredWorkspace.api_key) {
+      console.log('');
+      console.log(chalk.green('📊 View in Dashboard:'));
+      const dashboardUrl = `https://app.repochief.com/workspaces?setup=${registeredWorkspace.id}&key=${registeredWorkspace.api_key}`;
+      console.log('  ', chalk.cyan.underline(dashboardUrl));
+      console.log('  ', chalk.gray('(This link will auto-connect your workspace)'));
+    }
     
   } catch (error) {
     spinner.fail('Authentication failed');
