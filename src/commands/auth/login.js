@@ -119,6 +119,17 @@ async function handleOAuthFlow(options) {
     console.log(chalk.green(`✓ Logged in as ${tokens.user?.email || 'User'}`));
     console.log(chalk.gray(`  Workspace: ${workspaceId}`));
     
+    // Automatically register workspace with cloud
+    spinner.start('Registering workspace with cloud...');
+    try {
+      const { registerWorkspace } = require('../workspace/register');
+      await registerWorkspace();
+      spinner.succeed('Workspace registered with cloud');
+    } catch (error) {
+      spinner.warn('Could not register workspace automatically');
+      console.log(chalk.yellow('  Run "repochief workspace register" to complete setup'));
+    }
+    
     // Show next steps
     console.log('');
     console.log(chalk.cyan('Next steps:'));

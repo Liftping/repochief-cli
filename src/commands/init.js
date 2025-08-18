@@ -347,8 +347,9 @@ Edit \`tasks/default.json\` to customize your AI agent tasks.
 
 ## Learn More
 
-- [RepoChief Documentation](https://github.com/liftping/repochief)
-- [Task Configuration Guide](https://github.com/liftping/repochief/docs/tasks.md)
+- [RepoChief Documentation](https://docs.repochief.com)
+- [Getting Started Guide](https://docs.repochief.com/getting-started/quick-start)
+- [Configuration Reference](https://docs.repochief.com/getting-started/configuration)
 `;
     
     fs.writeFileSync(path.join(projectDir, 'README.md'), readmeContent);

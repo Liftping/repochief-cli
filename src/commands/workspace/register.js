@@ -68,8 +68,25 @@ async function registerWorkspace() {
     console.log(`  Status: ${chalk.green(response.data.workspace.status)}`);
     
     // Show next steps
+    // Update workspace file with server-generated ID
+    const path = require('path');
+    const fs = require('fs').promises;
+    const WORKSPACE_FILE = path.join(os.homedir(), '.repochief', 'workspace.json');
+    
+    // Update the workspace info with server-generated data
+    const updatedWorkspaceInfo = {
+      ...workspaceInfo,
+      workspaceId: response.data.workspace.id, // Use server ID
+      serverWorkspaceId: response.data.workspace.id,
+      apiKey: response.data.workspace.api_key,
+      registeredAt: new Date().toISOString()
+    };
+    
+    // Save updated workspace info
+    await fs.writeFile(WORKSPACE_FILE, JSON.stringify(updatedWorkspaceInfo, null, 2));
+    
     // Store the workspace API key as the token for this workspace
-    await storeToken(workspaceInfo.workspaceId, response.data.workspace.api_key);
+    await storeToken(response.data.workspace.id, response.data.workspace.api_key);
     
     // Set this as the active workspace for local CLI operations  
     const baseCommand = new BaseCommand();
@@ -98,3 +115,4 @@ async function registerWorkspace() {
 }
 
 module.exports = registerWorkspace;
+module.exports.registerWorkspace = registerWorkspace;

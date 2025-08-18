@@ -9,7 +9,7 @@ This directory contains standardized YAML templates for common development workf
 All templates follow the RepoChief plan schema:
 
 ```yaml
-apiVersion: repochief.io/v1      # API version for compatibility
+apiVersion: repochief.com/v1      # API version for compatibility
 kind: <PlanType>                 # Type of plan (WeeklySprint, FeatureDevelopment, etc.)
 metadata:                        # Plan metadata
   schemaVersion: "1.0"          # Schema version
@@ -267,7 +267,7 @@ Share your templates with the community:
 
 ## Support
 
-- **Documentation**: https://docs.repochief.com/templates
+- **Documentation**: https://docs.repochief.com
 - **Community**: https://discord.gg/repochief
 - **Issues**: https://github.com/repochief/repochief/issues
 
