@@ -75,7 +75,8 @@ async function pollForToken(client, deviceCodeResponse) {
           token_type: response.token_type || 'Bearer',
           expires_in: response.expires_in,
           scope: response.scope,
-          user: response.user
+          user: response.user,
+          user_id: response.user_id  // Now returns Clerk user ID
         });
         
       } catch (error) {

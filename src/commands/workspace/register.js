@@ -52,10 +52,11 @@ async function registerWorkspace() {
       }
     };
     
-    // Register with cloud - manually add x-user-id header
+    // Register with cloud - pass user ID and email
     const response = await client.axios.post('/workspaces/register-cli', registrationData, {
       headers: {
-        'x-user-id': validation.user_id
+        'x-user-id': validation.user_id,
+        'x-user-email': validation.user?.email || validation.email || null
       }
     });
     

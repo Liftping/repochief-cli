@@ -31,8 +31,8 @@ class APIClient {
       '/auth/device',
       '/auth/token', 
       '/auth/authorize',
-      '/auth/refresh',
-      '/workspaces/register-cli'
+      '/auth/refresh'
+      // Note: /workspaces/register-cli removed - it needs auth headers
     ];
     
     // Request interceptor to add auth token

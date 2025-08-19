@@ -112,12 +112,27 @@ async function handleOAuthFlow(options) {
     };
     const workspaceId = await getOrCreateWorkspaceId(workspaceOptions);
     
-    // Store tokens securely
+    // Store tokens and user ID securely
     await storeToken(workspaceId, tokens.refresh_token);
+    
+    // Store Clerk user ID for workspace registration
+    const path = require('path');
+    const fs = require('fs').promises;
+    const os = require('os');
+    const WORKSPACE_FILE = path.join(os.homedir(), '.repochief', 'workspace.json');
+    
+    try {
+      const workspaceData = JSON.parse(await fs.readFile(WORKSPACE_FILE, 'utf8'));
+      workspaceData.userId = tokens.user_id;  // Store Clerk user ID
+      await fs.writeFile(WORKSPACE_FILE, JSON.stringify(workspaceData, null, 2));
+    } catch (err) {
+      // File might not exist yet, that's ok
+    }
     
     spinner.succeed('Authentication successful!');
     console.log(chalk.green(`✓ Logged in as ${tokens.user?.email || 'User'}`));
     console.log(chalk.gray(`  Workspace: ${workspaceId}`));
+    console.log(chalk.gray(`  User ID: ${tokens.user_id}`));  // Show Clerk ID for debugging
     
     // Automatically register workspace with cloud
     spinner.start('Registering workspace with cloud...');
